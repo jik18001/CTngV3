@@ -224,7 +224,7 @@ func (ca *CA) GenerateUpdateEEA() []byte {
 			//fmt.Println(index, idString)
 			update.SRH = *SRHEEA
 			update.FileShare = data[index]
-			poi, _ := def.GeneratePOI(RSdataBlocks, index)
+			poi, _ := def.GeneratePOI(RStree, RSdataBlocks, index)
 			update.Head_rs = rootHashRS
 			update.PoI = poi
 		}

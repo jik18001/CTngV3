@@ -188,7 +188,7 @@ func (l *Logger) GenerateUpdate() {
 			//fmt.Println(index, idString)
 			update.STH = *newSTH
 			update.FileShare = data[index]
-			poi, _ := def.GeneratePOI(RSdataBlocks, index)
+			poi, _ := def.GeneratePOI(newtree, RSdataBlocks, index)
 			update.Head_rs = rootHashRS
 			update.Head_cert = rootHash
 			//update.STH_rs = *sthRS
@@ -215,6 +215,7 @@ func (l *Logger) Send_Update_EEA() {
 		_, err = l.Client.Post(url, "application/json", bytes.NewBuffer(update_json))
 		if err != nil {
 			fmt.Println("Failed to send update to: ", update.MonitorID)
+			fmt.Println(err)
 			//fmt.Println(update.FileShare)
 		} else {
 			fmt.Println("Update sent to ", update.MonitorID)

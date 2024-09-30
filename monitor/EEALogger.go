@@ -155,7 +155,11 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 		return
 	}
 	//validate data fragment
+	//--------------------------------------need to switch to another libaray because the parallel procoessing does not work ----------------------------------------------------
+
+	//m.Hashlock.Lock()
 	ok, _ := def.VerifyPOI2(update.Head_rs, update.PoI.Proof, update.FileShare)
+	//m.Hashlock.Unlock()
 	if !ok {
 		fmt.Println("Data Fragment Verification Failed")
 		return
@@ -486,15 +490,17 @@ func transparency_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter
 	}
 	fsmlogger.AddSignatureFragment(sigfrag)
 	fmt.Println("number of partial Signatures: ", fsmlogger.GetSignatureListLength())
-	fmt.Println("number of partial Signatures: ", fsmlogger.Signaturelist)
+	//fmt.Println("number of partial Signatures: ", fsmlogger.Signaturelist)
 	if fsmlogger.GetSignatureListLength() == m.Settings.Mal+1 {
 		sig := m.Aggregate(fsmlogger.Signaturelist)
-		fsmlogger.Signature = sig
+		fsmlogger.SetField("Signature", sig)
+		//fsmlogger.Signature = sig
 		// Retrieve the start time
 		startTime := fsmlogger.GetStartTime()
 		// Calculate the elapsed time
 		elapsedTime := time.Since(startTime)
-		fsmlogger.ConvergeTime = elapsedTime
+		fsmlogger.SetField("Convergetime", elapsedTime)
+		//fsmlogger.ConvergeTime = elapsedTime
 		// Print or log the elapsed time
 		fmt.Println("Time elapsed since start:", elapsedTime)
 	}

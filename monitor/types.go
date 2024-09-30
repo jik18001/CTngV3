@@ -18,6 +18,7 @@ type MonitorEEA struct {
 	FSMCAEEAs         []*FSMCAEEA
 	FSMLoggerEEAs     []*FSMLoggerEEA
 	Client            *http.Client
+	Hashlock          sync.RWMutex // Concurrency control
 }
 
 type MonitorSignedData struct {
@@ -118,6 +119,7 @@ func NewMonitorEEA(CTngID def.CTngID, cryptofile string, settingfile string) *Mo
 		Settings:          restoredsetting,
 		FSMCAEEAs:         fsmCAs,
 		FSMLoggerEEAs:     fsmLoggers,
+		Hashlock:          sync.RWMutex{},
 	}
 }
 

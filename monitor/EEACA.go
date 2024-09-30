@@ -329,7 +329,8 @@ func revocation_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter, 
 	fmt.Println("number of partial Signatures: ", fsmca.GetSignatureListLength())
 	if fsmca.GetSignatureListLength() == m.Settings.Mal+1 {
 		sig := m.Aggregate(fsmca.Signaturelist)
-		fsmca.Signature = sig
+		//fsmca.Signature = sig
+		fsmca.SetField("Signature", sig)
 		startTime := fsmca.GetStartTime()
 		elapsedTime := time.Since(startTime)
 		fsmca.ConvergeTime = elapsedTime

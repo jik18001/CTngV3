@@ -61,6 +61,7 @@ func PoM_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
 
 }
 
+/*
 func PeriodicTasks(m *MonitorEEA) {
 	// Immediately queue up the next task to run at next MUD.
 	// Doing this first means: no matter how long the rest of the function takes,
@@ -73,6 +74,7 @@ func PeriodicTasks(m *MonitorEEA) {
 	}
 	time.AfterFunc(time.Duration(m.Settings.MUD)*time.Second, f)
 }
+*/
 
 func StartMonitorEEAServer(m *MonitorEEA) {
 	tr := &http.Transport{
@@ -85,7 +87,14 @@ func StartMonitorEEAServer(m *MonitorEEA) {
 		Transport: tr,
 	}
 	// HTTP Server Loop
-	go PeriodicTasks(m)
+	//go PeriodicTasks(m)
+	filename := m.CTngID.String() + ".json"
+	m.DumpConvergeTimesToFile(filename)
+	f := func() {
+		m.DumpConvergeTimesToFile(filename)
+	}
+	time.AfterFunc(time.Duration(m.Settings.MUD)*time.Second, f)
+	fmt.Println("Current Time:", time.Now().Format(time.RFC3339))
 	handleRequests_EEA(m)
 }
 

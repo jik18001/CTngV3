@@ -28,7 +28,13 @@ func GenerateRandBlocks(size int) (blocks []merkletree.DataBlock) {
 
 func GenerateMerkleTree(blocks []merkletree.DataBlock) (*merkletree.MerkleTree, error) {
 	// Assuming the DataBlock type implements the Content interface, including the Serialize method.
-	tree, err := merkletree.New(nil, blocks)
+	config := &merkletree.Config{
+		HashFunc:      merkletree.DefaultHashFuncParallel,
+		Mode:          merkletree.ModeTreeBuild,
+		RunInParallel: true,
+		//NumRoutines:   4,
+	}
+	tree, err := merkletree.New(config, blocks)
 	return tree, err
 }
 
@@ -36,22 +42,33 @@ func GenerateRootHash(tree *merkletree.MerkleTree) []byte {
 	return tree.Root
 }
 
-func GeneratePOI(blocks []merkletree.DataBlock, index int) (PoI, error) {
+func GeneratePOI(tree *merkletree.MerkleTree, blocks []merkletree.DataBlock, index int) (PoI, error) {
 	// create a Merkle Tree config and set mode to tree building
-	config := &merkletree.Config{
-		Mode: merkletree.ModeTreeBuild,
-	}
-	tree, err := merkletree.New(config, blocks)
+	/*
+		config := &merkletree.Config{
+			Mode: merkletree.ModeTreeBuild,
+		}*/
+	tree, err := GenerateMerkleTree(blocks)
 	proof, err := tree.Proof(blocks[index])
 	return PoI{proof}, err
 }
 
 func VerifyPOI(sth STH, poi PoI, data []byte) (bool, error) {
-	ok, err := merkletree.Verify(&LeafBlock{Content: data}, poi.Proof, sth.Head, nil)
+	config := &merkletree.Config{
+		HashFunc:      merkletree.DefaultHashFuncParallel,
+		Mode:          merkletree.ModeTreeBuild,
+		RunInParallel: true,
+	}
+	ok, err := merkletree.Verify(&LeafBlock{Content: data}, poi.Proof, sth.Head, config)
 	return ok, err
 }
 
 func VerifyPOI2(rootHash []byte, poi *merkletree.Proof, data []byte) (bool, error) {
-	ok, err := merkletree.Verify(&LeafBlock{Content: data}, poi, rootHash, nil)
+	config := &merkletree.Config{
+		HashFunc:      merkletree.DefaultHashFuncParallel,
+		Mode:          merkletree.ModeTreeBuild,
+		RunInParallel: true,
+	}
+	ok, err := merkletree.Verify(&LeafBlock{Content: data}, poi, rootHash, config)
 	return ok, err
 }

@@ -91,6 +91,12 @@ func (l *FSMLoggerEEA) SetField(field string, value interface{}) error {
 		} else {
 			return errors.New("invalid type for DataCheck")
 		}
+	case "Convergetime":
+		if v, ok := value.(time.Duration); ok {
+			l.ConvergeTime = v
+		} else {
+			return errors.New("invalid type for DataCheck")
+		}
 	default:
 		return errors.New("unknown field")
 	}

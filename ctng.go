@@ -17,8 +17,8 @@ const (
 )
 
 func main() {
-	if len(os.Args) < 3 && os.Args[1] != "script-gen" {
-		fmt.Println("Usage: go run ctng.go <CA|Logger|Monitor|script-gen> <CTngID>")
+	if len(os.Args) < 3 && os.Args[1] != "Script" {
+		fmt.Println("Usage: go run ctng.go <CA|Logger|Monitor|Script> <CTngID>")
 		os.Exit(1)
 	}
 
@@ -53,7 +53,7 @@ func main() {
 		CTngID := def.CTngID(os.Args[2])
 		fmt.Println(CTngID)
 		monitor.StartMonitorEEA(CTngID, cryptofile, settingfile)
-	case "script-gen":
+	case "Script":
 		err := generateScript(numFSMCAEEAs, numFSMLoggerEEAs, numMonitors)
 		if err != nil {
 			fmt.Printf("Failed to generate script: %v\n", err)
@@ -61,13 +61,13 @@ func main() {
 		}
 		fmt.Println("Script generated successfully.")
 	default:
-		fmt.Println("Usage: go run ctng.go <CA|Logger|Monitor|script-gen> <CTngID>")
+		fmt.Println("Usage: go run ctng.go <CA|Logger|Monitor|Script> <CTngID>")
 		os.Exit(1)
 	}
 }
 
 func generateScript(numFSMCAEEAs, numFSMLoggerEEAs, numMonitors int) error {
-	file, err := os.Create("network_script.sh")
+	file, err := os.Create("run.sh")
 	if err != nil {
 		return err
 	}
@@ -78,23 +78,32 @@ func generateScript(numFSMCAEEAs, numFSMLoggerEEAs, numMonitors int) error {
 	fmt.Fprintln(file, "# Start a new tmux session")
 	fmt.Fprintln(file, "tmux new-session -d -s $SESSION\n")
 
-	// Generate monitor windows
+	// Generate monitor windows with race condition detection and redirection to log files
 	for i := 1; i <= numMonitors; i++ {
-		fmt.Fprintf(file, "tmux new-window -n \"network_monitor_%d\" go run ctng.go Monitor M%d\n", i, i)
+		fmt.Fprintf(file, "tmux new-window -n \"network_monitor_%d\" bash -c 'go run -race ctng.go Monitor M%d > monitor_%d.log 2>&1'\n", i, i, i)
 	}
 
-	// Generate CA windows (commented out as in the example)
+	// Add a 1-second delay after starting all the monitors
+	fmt.Fprintln(file, "sleep 1\n")
+
+	// Generate CA windows with race condition detection and redirection to log files
 	for i := 1; i <= numFSMCAEEAs; i++ {
-		fmt.Fprintf(file, "tmux new-window -n \"network_ca_%d\" go run ctng.go CA C%d\n", i, i)
+		fmt.Fprintf(file, "tmux new-window -n \"network_ca_%d\" bash -c 'go run -race ctng.go CA C%d > ca_%d.log 2>&1'\n", i, i, i)
 	}
 
-	// Generate logger windows
+	// Generate logger windows with race condition detection and redirection to log files
 	for i := 1; i <= numFSMLoggerEEAs; i++ {
-		fmt.Fprintf(file, "tmux new-window -n \"network_logger_%d\" go run ctng.go Logger L%d\n", i, i)
+		fmt.Fprintf(file, "tmux new-window -n \"network_logger_%d\" bash -c 'go run -race ctng.go Logger L%d > logger_%d.log 2>&1'\n", i, i, i)
 	}
 
 	fmt.Fprintln(file, "\n# Attach to the tmux session")
 	fmt.Fprintln(file, "tmux attach-session -t $SESSION")
+
+	// Make the script executable
+	err = os.Chmod("run.sh", 0755)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

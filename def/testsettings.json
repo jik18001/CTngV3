@@ -33,5 +33,5 @@
   "Revocation_ratio": 0.01,
   "Num_Loggers": 2,
   "Certificate_size": 5000,
-  "Certificate_per_logger": 80000
+  "Certificate_per_logger": 8000
 }
