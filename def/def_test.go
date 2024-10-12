@@ -46,7 +46,7 @@ func TestMerkleTreeFunctions(t *testing.T) {
 	}
 
 	// Generate POI for the first block
-	proof, err := GeneratePOI(dataBlocks, 0)
+	proof, err := GeneratePOI(tree, dataBlocks, 0)
 	if err != nil {
 		t.Errorf("Failed to generate Proof of Inclusion: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestBLSFunctionality(T *testing.T) {
 	threshold := 2
 
 	// First term is list of BLS ids. We now derive the BLS ids from the CTngIDs, so it can be ignored.
-	_, pubs, privs, err := GenerateThresholdKeypairs(entities, threshold)
+	_, pubs, privs, _, err := GenerateThresholdKeypairs(entities, threshold)
 
 	confirmNil(T, err)
 
@@ -253,6 +253,11 @@ func TestBLSFunctionality(T *testing.T) {
 		if agg.Verify(data, &pubs) == false {
 			T.Errorf("Aggregate failed to verify!")
 		}
+		/*
+			if agg.MasterVerify(data, mpk) == false {
+				fmt.Println("Master PublicKey:", mpk)
+				T.Errorf("mpk Aggregate failed to verify!")
+			}*/
 		fmt.Println(agg)
 		// Provide an incorrect signer and confirm that the aggregate fails to verify
 		agg.IDs[0] = sigs[r%n].ID

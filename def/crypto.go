@@ -66,7 +66,7 @@ func CTngKeyGen(Lnum int, Cnum int, Mnum int, Threshold int) *GlobalCrypto {
 		RSAPublicMap[logger] = *publicKey
 	}
 	// Threshold KeyGen for the Monitors
-	_, BLSPublicMap, BlsPrivateMap, _ = GenerateThresholdKeypairs(Monitors, Threshold)
+	_, BLSPublicMap, BlsPrivateMap, _, _ = GenerateThresholdKeypairs(Monitors, Threshold)
 
 	Total := Mnum
 

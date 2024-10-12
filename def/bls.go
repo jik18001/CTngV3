@@ -18,10 +18,11 @@ type BLSThresholdSignatures interface {
 	ThresholdAggregate([]SigFragment, int) (ThresholdSig, error)
 }
 
+/*
 // Generate mappings of IDs to Private Keys and Public Keys Based on a config's parameters
-func GenerateThresholdKeypairs(entities []CTngID, threshold int) ([]bls.ID, BlsPublicMap, BlsPrivateMap, error) {
+func GenerateThresholdKeypairs(entities []CTngID, threshold int) ([]bls.ID, BlsPublicMap, BlsPrivateMap, []bls.PublicKey, error) {
 	if threshold < 2 {
-		return nil, nil, nil, errors.New("Threshold must be greater than 1")
+		return nil, nil, nil, nil, errors.New("Threshold must be greater than 1")
 	}
 	//ids for n entities
 	n := len(entities)
@@ -29,29 +30,63 @@ func GenerateThresholdKeypairs(entities []CTngID, threshold int) ([]bls.ID, BlsP
 	mainSecrets := make([]bls.SecretKey, threshold)
 	privs := make(BlsPrivateMap)
 	pubs := make(BlsPublicMap)
+	sec := new(bls.SecretKey)
+	//sec.SetByCSPRNG()
+
+	mainSecrets = sec.GetMasterSecretKey(threshold)
+	mpk := bls.GetMasterPublicKey(mainSecrets)
 	//Generate all IDs and Keypairs.
 	for i := 0; i < n; i++ {
 		// blsIDs should be derived from the CTngIDs. In this case, we use hex string conversion.
 		// Note that blsIDs are only used when keys are generated, not sure when else.
 		sec := new(bls.SecretKey)
 		ids[i] = *entities[i].BlsID()
-		// For the first "threshold" number of entities, we generate unique secrets.
-		if i < threshold {
-			sec.SetByCSPRNG()
-			privs[entities[i]] = *sec
-			mainSecrets[i] = *sec
-		} else {
-			// The remaining entities are constructed using this threshold amount.
-			// (bls.SecretKey.Set) calls blsSecretKeyShare.
-			sec.Set(mainSecrets, &ids[i])
-			privs[entities[i]] = *sec
-		}
+		sec.Set(mainSecrets, &ids[i])
+		privs[entities[i]] = *sec
 		pubs[entities[i]] = *sec.GetPublicKey()
 		//Generate all the PublicKeys (for distribution to individual entities later)
 	}
 	// None of the above functions return errors. Instead they panic.
 	// If cryptography information fails to generate then we cannot proceed.
-	return ids, pubs, privs, nil
+	return ids, pubs, privs, mpk, nil
+}*/
+
+func GenerateThresholdKeypairs(entities []CTngID, threshold int) ([]bls.ID, BlsPublicMap, BlsPrivateMap, []bls.PublicKey, error) {
+	if threshold < 2 {
+		return nil, nil, nil, nil, errors.New("Threshold must be greater than 1")
+	}
+
+	n := len(entities)
+	ids := make([]bls.ID, n)                        // Unique IDs for the entities
+	mainSecrets := make([]bls.SecretKey, threshold) // Master secret keys for the threshold
+	privs := make(BlsPrivateMap)                    // Private key map for each participant
+	pubs := make(BlsPublicMap)                      // Public key map for each participant
+	sec := new(bls.SecretKey)                       // Secret key instance
+	mpk := make([]bls.PublicKey, threshold)         // Master public key array
+
+	// Step 1: Generate "threshold" number of master secret keys
+	mainSecrets = sec.GetMasterSecretKey(threshold)
+
+	// Step 2: Generate master public keys from the master secrets
+	mpk = bls.GetMasterPublicKey(mainSecrets)
+
+	// Step 3: Generate secret shares for all participants using Shamir's Secret Sharing
+	for i := 0; i < n; i++ {
+		// Each participant gets a unique ID
+		ids[i] = *entities[i].BlsID()
+
+		// Generate the secret share for the participant using their ID
+		sec.Set(mainSecrets, &ids[i])
+
+		// Store the secret share in the private key map
+		privs[entities[i]] = *sec
+
+		// Generate and store the public key for each participant
+		pubs[entities[i]] = *sec.GetPublicKey()
+	}
+
+	// Return the IDs, public/private key mappings, and master public key
+	return ids, pubs, privs, mpk, nil
 }
 
 // ThresholdSign will generate a signature fragment for the given message.
@@ -94,6 +129,10 @@ func (sig ThresholdSig) Verify(msg string, pubs *BlsPublicMap) bool {
 	}
 	//agregates the public signatures of the signers of the message and then verifies the message against that aggregated signature.
 	return sig.Sign.FastAggregateVerify(pubList, []byte(msg))
+}
+
+func (sig ThresholdSig) MasterVerify(msg string, pubs []bls.PublicKey) bool {
+	return sig.Sign.FastAggregateVerify(pubs, []byte(msg))
 }
 
 // Given a message and a public key mapping, verify the signature runs.
