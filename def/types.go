@@ -91,9 +91,9 @@ type DCRV struct {
 }
 
 type Update_Logger struct {
-	STH       STH    `json:"STH,omitempty"`
-	MonitorID CTngID `json:"MonitorID"`
-	File      []byte `json:"File,omitempty"`
+	STH STH `json:"STH,omitempty"`
+	//MonitorID CTngID `json:"MonitorID"`
+	File []byte `json:"File,omitempty"`
 }
 
 // Logger Update: Erasure Encoding version

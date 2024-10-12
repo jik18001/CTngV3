@@ -157,9 +157,7 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 	//validate data fragment
 	//--------------------------------------need to switch to another libaray because the parallel procoessing does not work ----------------------------------------------------
 
-	//m.Hashlock.Lock()
 	ok, _ := def.VerifyPOI2(update.Head_rs, update.PoI.Proof, update.FileShare)
-	//m.Hashlock.Unlock()
 	if !ok {
 		fmt.Println("Data Fragment Verification Failed")
 		return

@@ -18,7 +18,7 @@ type Logger struct {
 	Crypto      *def.GlobalCrypto                     `json:"Crypto,omitempty"`
 	Settings    *def.Settings                         `json:"Settings,omitempty"`
 	Client      *http.Client                          `json:"Client,omitempty"`
-	Updates     map[def.CTngID]*def.Update_Logger     `json:"Updates,omitempty"`
+	Update      *def.Update_Logger                    `json:"Update,omitempty"`
 	Updates_EEA map[def.CTngID]*def.Update_Logger_EEA `json:"Updates_EEA,omitempty"`
 	PeriodNum   int                                   `json:"PeriodNum"`
 	NumMonitors int                                   `json:"NumMonitors"`
@@ -41,7 +41,7 @@ func NewLogger(CTngID def.CTngID, cryptofile string, settingfile string) *Logger
 	def.LoadData(&restoredsetting, settingfile)
 	numMonitors := crypto.Total
 	numMal := crypto.Threshold - 1
-	Updates := make(map[def.CTngID]*def.Update_Logger, numMonitors)
+	var Update *def.Update_Logger
 	Updates_EEA := make(map[def.CTngID]*def.Update_Logger_EEA, numMonitors)
 	for i := 0; i < numMonitors; i++ {
 		id := def.CTngID(fmt.Sprintf("M%d", i+1))
@@ -53,7 +53,7 @@ func NewLogger(CTngID def.CTngID, cryptofile string, settingfile string) *Logger
 		CTngID:      CTngID,
 		Crypto:      crypto,
 		Settings:    restoredsetting,
-		Updates:     Updates,
+		Update:      Update,
 		Updates_EEA: Updates_EEA,
 		PeriodNum:   1,
 		NumMonitors: numMonitors,
@@ -196,10 +196,16 @@ func (l *Logger) GenerateUpdate() {
 		}
 		return
 	}
-	for _, update := range l.Updates {
-		update.STH = *sth
-		update.File = update.File
+
+	// Concatenate all the data slices into one []byte slice
+	var combinedData []byte
+	for _, part := range data {
+		combinedData = append(combinedData, part...)
 	}
+
+	// Now assign the combined data slice to l.Update.File
+	l.Update.STH = *sth
+	l.Update.File = combinedData
 
 }
 
@@ -237,10 +243,36 @@ func (l *Logger) Send_Update_EEA() {
 		}*/
 }
 
+func (l *Logger) Send_Update() {
+	monitors := def.GetMonitorURL(*l.Settings)
+	for _, monitor := range monitors {
+		url := "http://" + monitor + "/monitor/logger_update_EEA"
+		update := l.Update
+		update_json, err := json.Marshal(update)
+		if err != nil {
+			log.Fatalf("Failed to marshal update: %v", err)
+		}
+		_, err = l.Client.Post(url, "application/json", bytes.NewBuffer(update_json))
+		if err != nil {
+			fmt.Println("Failed to send update to: ", monitor)
+			fmt.Println(err)
+			//fmt.Println(update.FileShare)
+		} else {
+			fmt.Println("Update sent to ", monitor)
+			//fmt.Println(update.FileShare)
+		}
+
+	}
+}
+
 func StartLogger(id def.CTngID, cryptofile string, settingfile string) {
 	newlogger := NewLogger(id, cryptofile, settingfile)
 	newlogger.GenerateUpdate()
 	fmt.Println(newlogger.Updates_EEA[def.CTngID("M1")].Head_cert)
 	fmt.Println(newlogger.Updates_EEA[def.CTngID("M1")].Head_rs)
-	newlogger.Send_Update_EEA()
+	if newlogger.Settings.Distribution_Mode == def.EEA {
+		newlogger.Send_Update_EEA()
+	} else {
+		newlogger.Send_Update()
+	}
 }
