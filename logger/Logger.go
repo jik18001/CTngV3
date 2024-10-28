@@ -135,11 +135,30 @@ func (l *Logger) GenerateUpdate() {
 		log.Fatalf("Error initializing Reed-Solomon encoder: %v", err)
 	}
 	// Create a slice to hold the data for each monitor
-	data := make([][]byte, l.NumMonitors)
+	/*
+		data := make([][]byte, l.NumMonitors)
+		for i := range data {
+			data[i] = make([]byte, filesize/(l.NumMonitors-l.Mal))
+		}
+		// file the data portion
+		for i, in := range data[:(l.NumMonitors - l.Mal)] {
+			for j := range in {
+				in[j] = byte((i + j) & 0xff)
+			}
+		}*/
+
+	numBlocks := l.NumMonitors
+	if l.Settings.Distribution_Mode != def.EEA {
+		numBlocks = l.NumMonitors - l.Mal // Only allocate data blocks if EEA mode is off
+	}
+
+	// Allocate data slices accordingly
+	data := make([][]byte, numBlocks)
 	for i := range data {
 		data[i] = make([]byte, filesize/(l.NumMonitors-l.Mal))
 	}
-	// file the data portion
+
+	// Fill the data portion
 	for i, in := range data[:(l.NumMonitors - l.Mal)] {
 		for j := range in {
 			in[j] = byte((i + j) & 0xff)
@@ -160,8 +179,9 @@ func (l *Logger) GenerateUpdate() {
 	tree, err := def.GenerateMerkleTree(dataBlocks)
 	def.HandleError(err, "MT Generation")
 	rootHash := def.GenerateRootHash(tree)
-	sth := l.GenerateSTH(rootHash, numcerts)
-
+	var sth *def.STH
+	sth = l.GenerateSTH(rootHash, numcerts)
+	//fmt.Println(sth)
 	// Encode the data if the mode is Reedsolomn
 	if l.Settings.Distribution_Mode == def.EEA {
 		err := enc.Encode(data)
@@ -197,18 +217,17 @@ func (l *Logger) GenerateUpdate() {
 		return
 	}
 
-	// Concatenate all the data slices into one []byte slice
-	var combinedData []byte
-	for _, part := range data {
-		combinedData = append(combinedData, part...)
-	}
-
 	// Now assign the combined data slice to l.Update.File
-	l.Update.STH = *sth
-	l.Update.File = combinedData
+	l.Update = &def.Update_Logger{
+		STH:  *sth,
+		File: data,
+	}
+	//l.Update.STH = *sth
+	//l.Update.File = data
 
 }
 
+/*
 func (l *Logger) Send_Update_EEA() {
 	monitors := def.GetMonitorURL(*l.Settings)
 	for id, monitor := range monitors {
@@ -229,50 +248,81 @@ func (l *Logger) Send_Update_EEA() {
 		}
 
 	}
-	/*
-		monitorip := l.Settings.Ipmap[monitor]
-		monitorport := l.Settings.Portmap[monitor]
-		fmt.Println(monitorip, ":", monitorport)
-		url := "http://" + monitorip + ":" + monitorport + "/monitor/logger_update_EEA"
-		resp, err := l.Client.Post(url, "application/json", bytes.NewBuffer(sth_json))
-		if err != nil {
-			fmt.Println("Failed to send update: ", err)
-		} else {
-			fmt.Println("Update sent successfully, response status:", resp.Status)
-			defer resp.Body.Close()
-		}*/
 }
 
 func (l *Logger) Send_Update() {
 	monitors := def.GetMonitorURL(*l.Settings)
-	for _, monitor := range monitors {
-		url := "http://" + monitor + "/monitor/logger_update_EEA"
+	for id, monitor := range monitors {
+		url := "http://" + monitor + "/monitor/logger_update"
 		update := l.Update
+		//fmt.Println(update)
 		update_json, err := json.Marshal(update)
 		if err != nil {
 			log.Fatalf("Failed to marshal update: %v", err)
 		}
 		_, err = l.Client.Post(url, "application/json", bytes.NewBuffer(update_json))
 		if err != nil {
-			fmt.Println("Failed to send update to: ", monitor)
+			fmt.Println("Failed to send update to: ", id)
 			fmt.Println(err)
-			//fmt.Println(update.FileShare)
+			fmt.Println(update.STH)
 		} else {
-			fmt.Println("Update sent to ", monitor)
-			//fmt.Println(update.FileShare)
+			fmt.Println("Update sent to ", id)
+			fmt.Println(update.STH)
 		}
-
 	}
+}
+*/
+
+func (l *Logger) sendUpdateToMonitor(urlSuffix string, update interface{}, monitorID string) int {
+	url := "http://" + monitorID + urlSuffix
+	updateJSON, err := json.Marshal(update)
+	if err != nil {
+		log.Fatalf("Failed to marshal update: %v", err)
+	}
+
+	trafficSize := len(updateJSON) // Measure the size of the JSON data
+	_, err = l.Client.Post(url, "application/json", bytes.NewBuffer(updateJSON))
+	if err != nil {
+		fmt.Printf("Failed to send update to: %s\nError: %v\n", monitorID, err)
+	} else {
+		fmt.Printf("Update sent to %s, Traffic: %d bytes\n", monitorID, trafficSize)
+	}
+
+	return trafficSize
+}
+
+func (l *Logger) Send_Update_EEA() {
+	monitors := def.GetMonitorURL(*l.Settings)
+	totalTraffic := 0
+
+	for id, monitor := range monitors {
+		update := l.Updates_EEA[id]
+		totalTraffic += l.sendUpdateToMonitor("/monitor/logger_update_EEA", update, monitor)
+	}
+
+	fmt.Printf("Total traffic sent for EEA updates: %d bytes\n", totalTraffic)
+}
+
+func (l *Logger) Send_Update() {
+	monitors := def.GetMonitorURL(*l.Settings)
+	totalTraffic := 0
+
+	for _, monitor := range monitors {
+		totalTraffic += l.sendUpdateToMonitor("/monitor/logger_update", l.Update, monitor)
+	}
+
+	fmt.Printf("Total traffic sent for general updates: %d bytes\n", totalTraffic)
 }
 
 func StartLogger(id def.CTngID, cryptofile string, settingfile string) {
 	newlogger := NewLogger(id, cryptofile, settingfile)
 	newlogger.GenerateUpdate()
-	fmt.Println(newlogger.Updates_EEA[def.CTngID("M1")].Head_cert)
-	fmt.Println(newlogger.Updates_EEA[def.CTngID("M1")].Head_rs)
 	if newlogger.Settings.Distribution_Mode == def.EEA {
+		fmt.Println(newlogger.Updates_EEA[def.CTngID("M1")].Head_cert)
+		fmt.Println(newlogger.Updates_EEA[def.CTngID("M1")].Head_rs)
 		newlogger.Send_Update_EEA()
 	} else {
+		fmt.Println(newlogger.Update.STH)
 		newlogger.Send_Update()
 	}
 }

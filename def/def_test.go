@@ -405,16 +405,17 @@ func TestSimulationIO(t *testing.T) {
 	// Define command-line flags for starting port number, wait time, and other settings.
 	starting_port := flag.Int("starting_port", 8000, "Starting port number")
 	update_wait_time := flag.Int("update_wait_time", 5, "Wait time in seconds")
-	mature_wait_time := flag.Int("mature_wait_time", 20, "Wait time in seconds")
+	mature_wait_time := flag.Int("mature_wait_time", 0, "Wait time in seconds")
 	response_wait_time := flag.Int("reponse_wait_time", 6, "Wait time in seconds")
-	verification_wait_time := flag.Int("verification_wait_time", 12, "Wait time in seconds")
+	verification_wait_time := flag.Int("verification_wait_time", 22, "Wait time in seconds")
 	mud := flag.Int("mud", 60, "Maximum Update Delay (some integer value) in seconds")
 	bmode := flag.String("bmode", MIN_WT, "Mode: Min bandwidth or Min wait time")
-	dmode := flag.String("dmode", EEA, "Mode: default or EEA")
+	dmode := flag.String("dmode", DEFAULT, "Mode: default or EEA")
+	//dmode := flag.String("dmode", EEA, "Mode: default or EEA")
 	crvsize := flag.Int("CRV_size", 1000000, "CRV_size")
 	revocation_ratio := flag.Float64("Revocation_ratio", 0.01, "Revocation_ratio (float)")
 	certificate_size := flag.Int("Cerificate_size", 5000, "Size of dummy certificate, in Bytes")
-	certificate_per_logger := flag.Int("Certificate_per_logger", 80000, "New certificates per period")
+	certificate_per_logger := flag.Int("Certificate_per_logger", 8000, "New certificates per period")
 
 	// Parse the command-line flags.
 	flag.Parse()

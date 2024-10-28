@@ -93,7 +93,7 @@ type DCRV struct {
 type Update_Logger struct {
 	STH STH `json:"STH,omitempty"`
 	//MonitorID CTngID `json:"MonitorID"`
-	File []byte `json:"File,omitempty"`
+	File [][]byte `json:"File,omitempty"`
 }
 
 // Logger Update: Erasure Encoding version
@@ -107,8 +107,8 @@ type Update_Logger_EEA struct {
 }
 
 type Update_CA struct {
-	SRH  SRH    `json:"SRH,omitempty"`
-	File []byte `json:"File,omitempty"`
+	SRH  SRH      `json:"SRH,omitempty"`
+	File [][]byte `json:"File,omitempty"`
 }
 
 // CA Update: Erasure Encoding version
@@ -124,7 +124,7 @@ type Update_CA_EEA struct {
 type Notification struct {
 	Type       string `json:"type"`
 	Originator CTngID `json:"originator"`
-	Monitor    CTngID `json:"monitor"`
+	Monitor    CTngID `json:"monitor,omitempty"`
 	Sender     string `json:"sender"` // identifies the sender URL for query
 }
 

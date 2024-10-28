@@ -22,8 +22,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	time.AfterFunc(2*time.Minute, func() {
-		fmt.Println("Terminating the program after 2 minutes.")
+	time.AfterFunc(1*time.Minute, func() {
+		fmt.Println("Terminating the program after 1 minute.")
 		os.Exit(0)
 	})
 
@@ -52,7 +52,7 @@ func main() {
 	case "Monitor":
 		CTngID := def.CTngID(os.Args[2])
 		fmt.Println(CTngID)
-		monitor.StartMonitorEEA(CTngID, cryptofile, settingfile)
+		monitor.StartMonitor(CTngID, cryptofile, settingfile)
 	case "Script":
 		err := generateScript(numFSMCAEEAs, numFSMLoggerEEAs, numMonitors)
 		if err != nil {

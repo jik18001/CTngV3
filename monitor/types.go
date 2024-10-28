@@ -90,6 +90,7 @@ func NewMonitorEEA(CTngID def.CTngID, cryptofile string, settingfile string) *Mo
 			Notifications: []def.Notification{},
 			DataFragments: make([][]byte, numMonitors),
 			DataCheck:     false,
+			Data:          [][]byte{},
 			Signaturelist: []def.SigFragment{},
 			Signature:     def.ThresholdSig{},
 			APoM:          def.APoM{},
@@ -141,8 +142,15 @@ func (m *MonitorEEA) ThresholdVerify(msg string, sig def.ThresholdSig) error {
 	return err
 }
 
-func StartMonitorEEA(id def.CTngID, cryptofile string, settingfile string) {
+func StartMonitor(id def.CTngID, cryptofile string, settingfile string) {
 	newmonitor := NewMonitorEEA(id, cryptofile, settingfile)
-	//fmt.Println(newmonitor.CTngID)
-	StartMonitorEEAServer(newmonitor)
+	fmt.Println(newmonitor.Settings.Distribution_Mode)
+	if newmonitor.Settings.Distribution_Mode == def.EEA {
+		fmt.Println("Starting EEA Server")
+		StartMonitorEEAServer(newmonitor)
+	} else {
+		fmt.Println("Starting Default Server")
+		StartMonitorServer(newmonitor)
+	}
+
 }

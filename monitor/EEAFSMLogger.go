@@ -19,6 +19,7 @@ type FSMLoggerEEA struct {
 	Notifications        []def.Notification                   // Notifications cache for data collection
 	DataFragments        [][]byte                             // The certificates shares in this case
 	DataFragment_Counter int                                  // count of Data Fragments
+	Data                 [][]byte                             // The entire certificate file
 	DataCheck            bool                                 // compare agains the head_cert
 	Signaturelist        []def.SigFragment                    // Precommit and Post Commit State, sign over the STH
 	Signature            def.ThresholdSig                     // Done state (Serialized signature)
@@ -97,6 +98,12 @@ func (l *FSMLoggerEEA) SetField(field string, value interface{}) error {
 		} else {
 			return errors.New("invalid type for DataCheck")
 		}
+	case "Data":
+		if v, ok := value.([][]byte); ok {
+			l.Data = v
+		} else {
+			return errors.New("invalid type for Data")
+		}
 	default:
 		return errors.New("unknown field")
 	}
@@ -125,6 +132,8 @@ func (l *FSMLoggerEEA) GetField(field string) (interface{}, error) {
 		return l.TrafficCount, nil
 	case "UpdateCount":
 		return l.UpdateCount, nil
+	case "Data": // New case for Data field
+		return l.Data, nil
 	default:
 		return nil, errors.New("unknown field")
 	}
@@ -266,4 +275,32 @@ func (l *FSMLoggerEEA) IsSignaturePresent() bool {
 		return false
 	}
 	return true
+}
+
+// Method to securely add APoM to the FSMLoggerEEA
+func (l *FSMLoggerEEA) AddAPoM(apom def.APoM) error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	// Ensure that APoM is not overwritten if already present
+	if !reflect.DeepEqual(l.APoM, def.APoM{}) {
+		return errors.New("APoM already present")
+	}
+
+	l.APoM = apom
+	return nil
+}
+
+// Method to securely add CPoM to the FSMLoggerEEA
+func (l *FSMLoggerEEA) AddCPoM(cpom def.CPoM) error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	// Ensure that CPoM is not overwritten if already present
+	if !reflect.DeepEqual(l.CPoM, def.CPoM{}) {
+		return errors.New("CPoM already present")
+	}
+
+	l.CPoM = cpom
+	return nil
 }

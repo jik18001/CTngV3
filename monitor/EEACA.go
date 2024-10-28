@@ -154,17 +154,19 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 		NewContext := def.Context{
 			Label: def.WAKE_TM,
 		}
-		time.AfterFunc(time.Duration(m.Settings.Mature_Wait_time+m.Settings.Verification_Wait_time)*time.Second, func() {
+		go func() {
+			time.AfterFunc(time.Duration(m.Settings.Mature_Wait_time+m.Settings.Verification_Wait_time)*time.Second, func() {
 
-			value, _ := fsmca.GetField("DataCheck")
-			dataCheckValue, _ := value.(bool)
-			if dataCheckValue {
-				CSMWakeup(m, fsmca, NewContext)
-			} else {
-				fmt.Println("Place holder for accusation.")
-			}
-		})
-		return
+				value, _ := fsmca.GetField("DataCheck")
+				dataCheckValue, _ := value.(bool)
+				if dataCheckValue {
+					CSMWakeup(m, fsmca, NewContext)
+				} else {
+					fmt.Println("Place holder for accusation.")
+				}
+			})
+			return
+		}()
 	}
 }
 
@@ -309,7 +311,7 @@ func revocation_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter, 
 	if err != nil {
 		log.Fatalf("Failed to serialize SRH: %v", err)
 	}
-	fmt.Println("TBV: ", srh_fork)
+	//fmt.Println("TBV: ", srh_fork)
 	sigfrag, _ := def.SigFragmentFromString(msd.Signature)
 	err = m.FragmentVerify(string(srhBytes), sigfrag)
 	if err != nil {
@@ -318,11 +320,11 @@ func revocation_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter, 
 	}
 
 	if fsmca.IsSignatureFragmentPresent(sigfrag) {
-		fmt.Println("partial Signature duplicates.")
+		//fmt.Println("partial Signature duplicates.")
 		return
 	}
 	if fsmca.IsSignaturePresent() || fsmca.GetSignatureListLength() >= m.Settings.Mal+1 {
-		fmt.Println("Threshold Signature already exists.")
+		//fmt.Println("Threshold Signature already exists.")
 		return
 	}
 	fsmca.AddSignatureFragment(sigfrag)

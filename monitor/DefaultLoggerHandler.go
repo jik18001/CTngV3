@@ -11,11 +11,11 @@ import (
 	"time"
 
 	def "github.com/jik18001/CTngV3/def"
-	rs "github.com/klauspost/reedsolomon"
 	merkletree "github.com/txaty/go-merkletree"
+	//rs "github.com/klauspost/reedsolomon"
 )
 
-func LSMWakeup(m *MonitorEEA, lsm *FSMLoggerEEA, c def.Context) {
+func defaultLSMWakeup(m *MonitorEEA, lsm *FSMLoggerEEA, c def.Context) {
 
 	switch c.Label {
 	case def.WAKE_TC:
@@ -46,7 +46,7 @@ func LSMWakeup(m *MonitorEEA, lsm *FSMLoggerEEA, c def.Context) {
 		if err != nil {
 			log.Fatalf("Failed to marshal update: %v", err)
 		}
-		broadcastEEA(m, "/monitor/transparency_partial_signature", msd_json)
+		broadcastEEA(m, "/monitor/default_transparency_partial_signature", msd_json)
 		fmt.Println("transparency_partial_signature broadcasted")
 		/*
 			case def.WAKE_TR:
@@ -109,9 +109,7 @@ func LSMWakeup(m *MonitorEEA, lsm *FSMLoggerEEA, c def.Context) {
 	}
 }
 
-func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Logger_EEA) {
-	//All cases we check STH first
-	//Signature Verification, remove the signature from the data structure, then serialize it to get the message, then verifiy it against the signature
+func check_and_send_valid_sth(m *MonitorEEA, fsmlogger *FSMLoggerEEA, sth def.STH) {
 	STH_fork := sth
 	STH_fork.Signature = def.RSASig{}
 	sthBytes, err := json.Marshal(STH_fork)
@@ -122,12 +120,39 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 	if err != nil {
 		return
 	}
-	//fmt.Println("Signature Verification Passed")
-	// proceed only if we pass the verification
-	// retrieve existing STH
-	index, _ := def.MapIDtoInt(def.CTngID(sth.LID))
-	var fsmlogger *FSMLoggerEEA
-	fsmlogger = m.FSMLoggerEEAs[index]
+	fsmlogger.SetField("State", def.PRECOMMIT)
+	fsmlogger.SetField("STH", sth)
+	fmt.Println("Transitioned to: ", fsmlogger.State)
+
+	STH_only_update := def.Update_Logger{
+		STH:  sth,
+		File: [][]byte{},
+	}
+	sth_json, err := json.Marshal(STH_only_update)
+	if err != nil {
+		log.Fatalf("Failed to marshal update: %v", err)
+	}
+	broadcastEEA(m, "/monitor/logger_update", sth_json)
+	NewContext := def.Context{
+		Label: def.WAKE_TM,
+	}
+	// Run this in a new goroutine
+	go func() {
+		time.AfterFunc(time.Duration(m.Settings.Verification_Wait_time)*time.Second, func() {
+			value, _ := fsmlogger.GetField("DataCheck")
+			dataCheckValue, _ := value.(bool)
+			fmt.Println(m.Settings.Verification_Wait_time, dataCheckValue)
+			if dataCheckValue {
+				defaultLSMWakeup(m, fsmlogger, NewContext)
+			} else {
+				fmt.Println("Place holder for accusation.")
+			}
+		})
+	}()
+
+}
+
+func check_and_send_conflict_sth(m *MonitorEEA, fsmlogger *FSMLoggerEEA, sth def.STH) bool {
 	sth2, _ := fsmlogger.GetField("STH")
 	// if we already have an existing STH
 	if !reflect.DeepEqual(sth2, def.STH{}) {
@@ -155,188 +180,96 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 				}
 				broadcastEEA(m, "/monitor/logger_update", sth_json)
 			}
+
 			/*
-				cPoM := &def.CPoM{
-					Entity_Convicted: def.CTngID(STH_fork.LID),
-					MetaData1:        sth,
-					MetaData2:        sth2,
-				}
 				cPoM_json, err := json.Marshal(cPoM)
 				if err != nil {
 					log.Fatalf("Failed to marshal update: %v", err)
 				}
 				broadcastEEA(m, "/monitor/PoM", cPoM_json)
 			*/
-			return
+			return true
 		}
 	}
-	//fmt.Println("Conflicts Verification Passed")
-	//check duplicate
-	update2, _ := fsmlogger.GetUpdate(update.MonitorID)
-	if reflect.DeepEqual(update, update2) {
-		return
-	}
-	//validate data fragment
-	//--------------------------------------need to switch to another libaray because the parallel procoessing does not work ----------------------------------------------------
+	return false
+}
 
-	ok, _ := def.VerifyPOI2(update.Head_rs, update.PoI.Proof, update.FileShare)
-	if !ok {
-		fmt.Println("Data Fragment Verification Failed")
+func check_and_send_notifcation(m *MonitorEEA, fsmlogger *FSMLoggerEEA, update def.Update_Logger) {
+	certs, _ := fsmlogger.GetField("Data")
+	if !reflect.DeepEqual(certs, [][]byte{}) {
 		return
 	}
-	//fmt.Println("PoI Verification Passed")
-	// Store the Update
-	fmt.Println(update.MonitorID)
-	fsmlogger.StoreUpdate(update.MonitorID, update)
-	monitorindex, _ := def.MapIDtoInt(def.CTngID(update.MonitorID))
-	frag, _ := fsmlogger.GetDataFragment(monitorindex)
-	if reflect.DeepEqual(frag, update.FileShare) {
+	STH_fork := update.STH
+	STH_fork.Signature = def.RSASig{}
+	sthBytes, err := json.Marshal(STH_fork)
+	if err != nil {
+		log.Fatalf("Failed to serialize STH: %v", err)
+	}
+	err = m.Crypto.Verify(sthBytes, update.STH.Signature)
+	if err != nil {
+		fmt.Println("Failed to verify the STH")
 		return
 	}
-	fsmlogger.AddDataFragment(monitorindex, update.FileShare)
-	counter := fsmlogger.GetDataFragmentCounter()
-	if counter == m.Settings.Num_Monitors-m.Settings.Mal {
 
-		dec, err := rs.New(counter, m.Settings.Mal)
-		if err != nil {
-			log.Fatalf("Error initializing Reed-Solomon decoder: %v", err)
-		}
-		fileShares := fsmlogger.GetDataFragments()
-		err = dec.Reconstruct(fileShares)
-		if err != nil {
-			log.Fatalf("Error during Reed-Solomon decoding: %v", err)
-		}
-		fmt.Println(len(fileShares[0]))
-		fmt.Println(len(fileShares[1]))
-		fmt.Println(len(fileShares[2]))
-		fmt.Println(len(fileShares[3]))
-		//fmt.Println(fileShares[0])
-		//fmt.Println(fileShares[1])
-		//fmt.Println(fileShares[2])
-		//fmt.Println(fileShares[3])
-		var dataBlocks []merkletree.DataBlock
-		for i := range fileShares[:(counter)] {
-			for j := 0; j < len(fileShares[i]); j += m.Settings.Certificate_size {
-				end := j + m.Settings.Certificate_size
-				if end > len(fileShares[i]) {
-					end = len(fileShares[i])
-				}
-				dataBlocks = append(dataBlocks, &def.LeafBlock{Content: fileShares[i][j:end]})
+	//PoI verification
+	data := update.File
+	var dataBlocks []merkletree.DataBlock
+	for i := range data[:(m.Settings.Num_Monitors - m.Settings.Mal)] {
+		for j := 0; j < len(data[i]); j += m.Settings.Certificate_size {
+			end := j + m.Settings.Certificate_size
+			if end > len(data[i]) {
+				end = len(data[i])
 			}
+			dataBlocks = append(dataBlocks, &def.LeafBlock{Content: data[i][j:end]})
 		}
-		// Generate Merkle Tree
-		tree, err := def.GenerateMerkleTree(dataBlocks)
-		def.HandleError(err, "MT Generation")
-		rootHash := def.GenerateRootHash(tree)
-		isRootHashValid := reflect.DeepEqual(rootHash, update.Head_cert)
-		//fmt.Println(rootHash)
-		//fmt.Println(update.Head_cert)
-		//fmt.Println("RootHash comparison result:", isRootHashValid)
-		if isRootHashValid {
-			fsmlogger.SetField("DataCheck", true)
-		}
-		//value, _ := fsmlogger.GetField("DataCheck")
-		//dataCheckValue, _ := value.(bool)
-		//fmt.Println(dataCheckValue)
 	}
-	//fmt.Println(len(fsmlogger.DataFragments[0]))
-	//fmt.Println(len(fsmlogger.DataFragments[1]))
-	//fmt.Println(len(fsmlogger.DataFragments[2]))
-	//fmt.Println(len(fsmlogger.DataFragments[3]))
-	// now create a notification
+	// Generate Merkle Tree
+	tree, err := def.GenerateMerkleTree(dataBlocks)
+	def.HandleError(err, "MT Generation")
+	rootHash := def.GenerateRootHash(tree)
+	if !reflect.DeepEqual(rootHash, update.STH.Head) {
+		fmt.Println("PoI verification Failed!")
+		return
+	}
+	fsmlogger.SetField("Data", update.File)
+	fsmlogger.SetField("DataCheck", true)
 	new_note := def.Notification{
 		Type:       def.TUEEA,
 		Originator: def.CTngID(update.STH.LID),
-		Monitor:    update.MonitorID,
-		Sender:     m.Self_ip_port,
+		//Monitor:    update.MonitorID,
+		Sender: m.Self_ip_port,
 	}
 	//fmt.Println(new_note)
 	new_note_json, err := json.Marshal(new_note)
 	if err != nil {
 		log.Fatalf("Failed to marshal update: %v", err)
 	}
-	broadcastEEA(m, "/monitor/transparency_notification", new_note_json)
-	//fmt.Printf("Notification broadcasted with logger %s and og monitor %s\n", update.STH.LID, update.MonitorID)
-	//if this is the first STH
-	if reflect.DeepEqual(sth2, def.STH{}) {
-		//fmt.Println(sth2)
-		//fmt.Println(sth)
-		fsmlogger.SetField("STH", sth)
-		fsmlogger.SetField("State", def.PRECOMMIT)
-		fmt.Println("Transitioned to: ", fsmlogger.State)
-		sth_json, err := json.Marshal(sth)
-		if err != nil {
-			log.Fatalf("Failed to marshal update: %v", err)
-		}
-		broadcastEEA(m, "/monitor/STH", sth_json)
-		NewContext := def.Context{
-			Label: def.WAKE_TM,
-		}
-		go func() {
-			time.AfterFunc(time.Duration(m.Settings.Verification_Wait_time)*time.Second, func() {
+	broadcastEEA(m, "/monitor/default_transparency_notification", new_note_json)
+}
 
-				value, _ := fsmlogger.GetField("DataCheck")
-				dataCheckValue, _ := value.(bool)
-				//fmt.Println(dataCheckValue)
-				if dataCheckValue {
-					LSMWakeup(m, fsmlogger, NewContext)
-				} else {
-					fmt.Println("Place holder for accusation.")
-				}
-			})
+func process_logger_update(m *MonitorEEA, update def.Update_Logger) {
+	// retrieve te state machine first
+	index, _ := def.MapIDtoInt(def.CTngID(update.STH.LID))
+	var fsmlogger *FSMLoggerEEA
+	fsmlogger = m.FSMLoggerEEAs[index]
+	current_state, _ := fsmlogger.GetField("State")
+
+	if current_state == def.INIT {
+		check_and_send_valid_sth(m, fsmlogger, update.STH)
+
+	} else {
+		if check_and_send_conflict_sth(m, fsmlogger, update.STH) {
+			fmt.Println("Conflict Found.")
 			return
-		}()
+		}
+	}
+	if update.File != nil && len(update.File) > 0 {
+		check_and_send_notifcation(m, fsmlogger, update)
 	}
 
 }
 
-func logger_sth_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
-	var sth def.STH
-
-	// Create a counter to track the number of bytes read
-	var byteCounter int64
-
-	// Create a TeeReader to count bytes while reading from r.Body
-	counterReader := io.TeeReader(r.Body, &countWriter{count: &byteCounter})
-
-	// Decode the STH from the request body
-	if err := json.NewDecoder(counterReader).Decode(&sth); err != nil {
-		http.Error(w, "Failed to decode update", http.StatusBadRequest)
-		return
-	}
-
-	// Retrieve the FSMLogger corresponding to the STH LID
-	//index, _ := def.MapIDtoInt(def.CTngID(sth.LID))
-	//fsmlogger := m.FSMLoggerEEAs[index]
-
-	// Retrieve the current traffic count and ensure type assertion
-	// trafficcountInterface, _ := fsmlogger.GetField("TrafficCount")
-	// trafficcount := trafficcountInterface.(int) // Assert as int
-
-	// Update the traffic count by adding the size of the request body
-	// newcount := trafficcount + int(byteCounter)
-	// fsmlogger.SetField("TrafficCount", newcount)
-
-	// Process the logger update
-	process_logger_update_EEA(m, sth, def.Update_Logger_EEA{})
-}
-
-// this function handles the update (Erasure Encoding Version) from the logger
-/*func logger_update_EEA_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
-	//parse the update
-	var update def.Update_Logger_EEA
-	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
-		http.Error(w, "Failed to decode update", http.StatusBadRequest)
-		return
-	}
-	//fmt.Println(update.STH)
-	//if no conflicts
-	//fmt.Println("Update received")
-	process_logger_update_EEA(m, update.STH, update)
-
-}*/
-
-func logger_update_EEA_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
+func logger_update_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
 	// Create a counter to track the number of bytes read
 	var byteCounter int64
 
@@ -344,7 +277,7 @@ func logger_update_EEA_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Req
 	counterReader := io.TeeReader(r.Body, &countWriter{count: &byteCounter})
 
 	// Parse the update
-	var update def.Update_Logger_EEA
+	var update def.Update_Logger
 	if err := json.NewDecoder(counterReader).Decode(&update); err != nil {
 		http.Error(w, "Failed to decode update", http.StatusBadRequest)
 		return
@@ -357,23 +290,26 @@ func logger_update_EEA_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Req
 	// Retrieve the current traffic count and ensure type assertion
 	trafficcountInterface, _ := fsmlogger.GetField("TrafficCount")
 	trafficcount := trafficcountInterface.(int) // Assert as int
-	fmt.Println("New data received with size", byteCounter)
+
 	// Update the traffic count by adding the size of the request body
 	newcount := trafficcount + int(byteCounter)
 	fsmlogger.SetField("TrafficCount", newcount)
 
 	// Retrieve the current traffic count and ensure type assertion
-	updatecountInterface, _ := fsmlogger.GetField("UpdateCount")
-	updatecount := updatecountInterface.(int) // Assert as int
-	// Update the traffic count by adding the size of the request body
-	newucount := updatecount + 1
-	fsmlogger.SetField("UpdateCount", newucount)
+	if update.File != nil && len(update.File) > 0 {
+		fmt.Println("New Update received with size", byteCounter)
+		updatecountInterface, _ := fsmlogger.GetField("UpdateCount")
+		updatecount := updatecountInterface.(int) // Assert as int
+		// Update the traffic count by adding the size of the request body
+		newucount := updatecount + 1
+		fsmlogger.SetField("UpdateCount", newucount)
+	}
 
 	// Process the logger update
-	process_logger_update_EEA(m, update.STH, update)
+	process_logger_update(m, update)
 }
 
-func transparency_request_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
+func default_transparency_request_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
 	var new_note def.Notification
 	if err := json.NewDecoder(r.Body).Decode(&new_note); err != nil {
 		http.Error(w, "Failed to decode update", http.StatusBadRequest)
@@ -384,11 +320,35 @@ func transparency_request_handler(m *MonitorEEA, w http.ResponseWriter, r *http.
 	fsmlogger := m.FSMLoggerEEAs[loggerindex]
 	//fmt.Println(fsmlogger.State)
 
-	update, err := fsmlogger.GetUpdate(def.CTngID(new_note.Monitor))
+	//update, err := fsmlogger.GetUpdate(def.CTngID(new_note.Monitor))
+	data, err := fsmlogger.GetField("Data")
 	if err != nil {
 		return
 	}
+
+	// Assert that data is of type [][]byte
+	dataBytes, ok := data.([][]byte)
+	if !ok {
+		// Handle the case where the type assertion fails
+		return //fmt.Errorf("failed to assert type of Data")
+	}
+
+	sth, err := fsmlogger.GetField("STH")
+	if err != nil {
+		return
+	}
+
+	// Assert that sth is of type def.STH
+	sthStruct, ok := sth.(def.STH)
+	if !ok {
+		// Handle the case where the type assertion fails
+		return //fmt.Errorf("failed to assert type of STH")
+	}
 	//fmt.Println(update.MonitorID)
+	update := def.Update_Logger{
+		STH:  sthStruct,
+		File: dataBytes,
+	}
 	update_json, err := json.Marshal(update)
 	if err != nil {
 		log.Fatalf("Failed to marshal update: %v", err)
@@ -399,7 +359,7 @@ func transparency_request_handler(m *MonitorEEA, w http.ResponseWriter, r *http.
 		//fmt.Println("Failed to send update: ", err)
 	}
 }
-func transparency_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
+func default_transparency_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
 	var new_note def.Notification
 	if err := json.NewDecoder(r.Body).Decode(&new_note); err != nil {
 		http.Error(w, "Failed to decode update", http.StatusBadRequest)
@@ -412,9 +372,16 @@ func transparency_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *
 	loggerindex, _ := def.MapIDtoInt(new_note.Originator)
 	fsmlogger := m.FSMLoggerEEAs[loggerindex]
 	if m.Settings.Broadcasting_Mode == def.MIN_WT {
-		existing_update, _ := fsmlogger.GetUpdate(new_note.Monitor)
+		//existing_update, _ := fsmlogger.GetUpdate(new_note.Monitor)
 		//return if we already have the update
-		if !reflect.DeepEqual(existing_update, def.Update_Logger_EEA{}) {
+		//if !reflect.DeepEqual(existing_update, def.Update_Logger_EEA{}) {
+		//	return
+		//}
+		data, err := fsmlogger.GetField("Data")
+		if err != nil {
+			return
+		}
+		if !reflect.DeepEqual(data, [][]byte{}) {
 			return
 		}
 		url := "http://" + new_note.Sender + "/monitor/transparency_request"
@@ -468,7 +435,7 @@ func transparency_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *
 
 }
 
-func transparency_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
+func default_transparency_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
 	//fmt.Println("MSD received")
 	var msd MonitorSignedData
 	if err := json.NewDecoder(r.Body).Decode(&msd); err != nil {
@@ -530,5 +497,5 @@ func transparency_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter
 	if err != nil {
 		log.Fatalf("Failed to marshal update: %v", err)
 	}
-	broadcastEEA(m, "/monitor/transparency_partial_signature", msd_json)
+	broadcastEEA(m, "/monitor/default_transparency_partial_signature", msd_json)
 }
