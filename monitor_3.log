@@ -3,25 +3,25 @@ M3
 default
 Starting Default Server
 Converge times successfully dumped to M3.json
-Current Time: 2024-10-28T19:14:06-04:00
+Current Time: 2024-11-17T21:55:51-05:00
 [34m(default) Listening on port: 8006 [0m
-New Update received with size 53333867
 Transitioned to:  precommit
 Transitioned to:  precommit
 New Update received with size 53333867
+New Update received with size 53333867
+number of partial Signatures:  1
 22 true
 WAKE_TM event triggered.
-TBS:  {L1 1 8000 2024-10-28T23:14:06Z [156 165 116 237 33 7 247 82 67 18 226 49 173 255 200 234 69 99 194 18 152 233 88 229 134 171 91 252 68 61 21 133] {"sig":"","id":""}}
-number of partial Signatures:  1
+TBS:  {L1 1 8000 2024-11-18T02:55:56Z [156 165 116 237 33 7 247 82 67 18 226 49 173 255 200 234 69 99 194 18 152 233 88 229 134 171 91 252 68 61 21 133] {"sig":"","id":""}}
 number of partial Signatures:  2
-Time elapsed since start: 28.184655027s
+Time elapsed since start: 32.381194124s
 transparency_partial_signature broadcasted
 22 true
 WAKE_TM event triggered.
-TBS:  {L2 1 8000 2024-10-28T23:14:06Z [156 165 116 237 33 7 247 82 67 18 226 49 173 255 200 234 69 99 194 18 152 233 88 229 134 171 91 252 68 61 21 133] {"sig":"","id":""}}
+TBS:  {L2 1 8000 2024-11-18T02:55:56Z [156 165 116 237 33 7 247 82 67 18 226 49 173 255 200 234 69 99 194 18 152 233 88 229 134 171 91 252 68 61 21 133] {"sig":"","id":""}}
 number of partial Signatures:  1
 number of partial Signatures:  2
-Time elapsed since start: 28.212357386s
+Time elapsed since start: 32.473503324s
 transparency_partial_signature broadcasted
 Terminating the program after 1 minute.
 Converge times successfully dumped to M3.json

@@ -27,7 +27,7 @@
   "Verification_Wait_time": 22,
   "MUD": 60,
   "Distribution_Mode": "default",
-  "Broadcasting_Mode": "minimal wait time",
+  "Broadcasting_Mode": "minimal bandwidth consumption",
   "Num_CAs": 2,
   "CRV_size": 1000000,
   "Revocation_ratio": 0.01,

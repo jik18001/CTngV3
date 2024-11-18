@@ -48,56 +48,9 @@ func defaultLSMWakeup(m *MonitorEEA, lsm *FSMLoggerEEA, c def.Context) {
 		}
 		broadcastEEA(m, "/monitor/default_transparency_partial_signature", msd_json)
 		fmt.Println("transparency_partial_signature broadcasted")
-		/*
-			case def.WAKE_TR:
 
-				if content, ok := c.Content.(def.Notification); ok {
-					monitorIndex, err := def.MapIDtoInt(def.CTngID(content.Monitor))
-					if err != nil {
-						log.Printf("Failed to map monitor ID to int: %v", err)
-						return
-					}
-					fsmlogger := m.FSMLoggerEEAs[monitorIndex]
-					// Retrieve the data fragment
-					dataFragment, err := fsmlogger.GetDataFragment(monitorIndex)
-					if err != nil {
-						log.Printf("Failed to get data fragment for monitor index %d: %v", monitorIndex, err)
-						return
-					}
-
-					// If the data fragment is empty, initiate a request to retrieve it
-					if len(dataFragment) == 0 {
-						log.Println("Data fragment is empty. Initiating requests to retrieve it.")
-						notifications := fsmlogger.GetNotifications()
-						new_note_fork := content
-						new_note_fork.Sender = m.Self_ip_port
-						new_note_json, err := json.Marshal(new_note_fork)
-						if err != nil {
-							log.Fatalf("Failed to marshal update: %v", err)
-						}
-						for _, notification := range notifications {
-							url := "http://" + notification.Sender + "/monitor/transparency_request"
-
-							// Assume new_note_json is defined and contains the correct JSON data
-							response, err := m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
-							if err != nil {
-								log.Printf("Failed to send transparency request to %s: %v", notification.Sender, err)
-								continue
-							}
-
-							// Close the response body immediately after processing it
-							if response.Body != nil {
-								response.Body.Close()
-							}
-
-							log.Printf("Transparency request successfully sent to %s", notification.Sender)
-						}
-					} else {
-						log.Println("Data fragment already available. No need to initiate requests.")
-					}
-				} else {
-					log.Println("Failed to assert c.Content to the expected type")
-				}*/
+	case def.WAKE_TR:
+		//Place holder for WAKE_TR event, it's already implemented in the default_transparency_notification_handler
 
 	case def.WAKE_TU:
 		// Placeholder for WAKE_TU event handling
@@ -406,28 +359,30 @@ func default_transparency_notification_handler(m *MonitorEEA, w http.ResponseWri
 			}
 			_, err = m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
 			if err != nil {
-				//fmt.Println("Failed to send update: ", err)
+				fmt.Println("Failed to send update: ", err)
 			}
 			NewContext := def.Context{
 				Label:   def.WAKE_TR,
 				Content: new_note,
 			}
-			time.AfterFunc(time.Duration(m.Settings.Update_Wait_time)*time.Second, func() {
+			time.AfterFunc(time.Duration(m.Settings.Response_Wait_time)*time.Second, func() {
 				LSMWakeup(m, fsmlogger, NewContext)
-				/*
-					monitorindex, _ := def.MapIDtoInt(def.CTngID(new_note.Monitor))
-					_, err := fsmlogger.GetDataFragment(monitorindex)
-					if err == nil {
-						notifications := fsmlogger.GetNotifications()
-						for _, notification := range notifications {
-							url := "http://" + notification.Sender + "/monitor/transparency_request"
-							_, err := m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
-							if err != nil {
-								//fmt.Println("Failed to send update: ", err)
-							}
+
+				//monitorindex, _ := def.MapIDtoInt(def.CTngID(new_note.Monitor))
+				//_, err := fsmlogger.GetDataFragment(monitorindex)
+				value, _ := fsmlogger.GetField("DataCheck")
+				dataCheckValue, _ := value.(bool)
+				if dataCheckValue == false {
+					notifications := fsmlogger.GetNotifications()
+					for _, notification := range notifications {
+						url := "http://" + notification.Sender + "/monitor/transparency_request"
+						_, err := m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
+						if err != nil {
+							//fmt.Println("Failed to send update: ", err)
 						}
 					}
-				*/
+				}
+
 			})
 		}
 		fsmlogger.AddNotification(new_note)

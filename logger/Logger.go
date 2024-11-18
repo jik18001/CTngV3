@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 
@@ -315,6 +316,10 @@ func (l *Logger) Send_Update() {
 }
 
 func StartLogger(id def.CTngID, cryptofile string, settingfile string) {
+	// Add a random delay between 0 and 4 seconds
+	rand.Seed(time.Now().UnixNano())                   // Seed the random number generator
+	delay := time.Duration(rand.Intn(5)) * time.Second // Random delay in the range [0, 4] seconds
+	time.Sleep(delay)                                  // Introduce the delay
 	newlogger := NewLogger(id, cryptofile, settingfile)
 	newlogger.GenerateUpdate()
 	if newlogger.Settings.Distribution_Mode == def.EEA {
