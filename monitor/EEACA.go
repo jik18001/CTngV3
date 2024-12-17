@@ -211,19 +211,26 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 			concatenatedData = append(concatenatedData, shard...)
 		}
 
-		//Due to the limitation of the EEA encoding, padding is required, for benign system PoC skipping this step for now
-		//hcrv, _ := def.GenerateSHA256(concatenatedData)
-		//hdcrv, _ := def.GenerateSHA256(concatenatedData)
+		// After reconstructing and concatenating the shards:
+		concatenatedData = concatenatedData[:update.OriginalLen]
 
-		//recreatedHead := append(hcrv, hdcrv...)
-		//recreatedHead = append(recreatedHead, update.Head_rs...)
+		// Compute hcrv and hdcrv as CA did by hashing the exact original dcrv
+		hcrv, _ := def.GenerateSHA256(concatenatedData)
+		hdcrv, _ := def.GenerateSHA256(concatenatedData)
+
+		// Recreate SRH.Head as the CA did: hcrv || hdcrv || update.Head_rs
+		recreatedHead := append(hcrv, hdcrv...)
+		recreatedHead = append(recreatedHead, update.Head_rs...)
 
 		// Compare recreatedHead with srh.Head from the CA
-		// if !reflect.DeepEqual(recreatedHead, srh.Head) {
-		// fmt.Println("SRH.Head mismatch! Data verification failed.")
-		// return
-		fsmca.SetField("DataCheck", true)
-		fmt.Println("Data reconstruction and verification succeeded. DataCheck set to true.")
+		if !reflect.DeepEqual(recreatedHead, srh.Head) {
+			fmt.Println("SRH.Head mismatch! Data verification failed.")
+		} else {
+			// If verification passes
+			fsmca.SetField("DataCheck", true)
+			fmt.Println("Data reconstruction and verification succeeded. DataCheck set to true.")
+		}
+
 	}
 
 	// Send a notification after handling the update

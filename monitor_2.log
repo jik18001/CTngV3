@@ -3,51 +3,142 @@ M2
 erasure encoding algorithm
 Starting EEA Server
 Converge times successfully dumped to M2.json
-Current Time: 2024-12-16T18:39:28-05:00
+Current Time: 2024-12-16T20:38:28-05:00
 [34mListening on port: 8005 [0m
-Notification received, originally assigned to:  M1
-request sent, TR started
-Processing update from CA ID (CAID): C1, Monitor ID (MID): M1
-Update received, originally assigned to:  M1
-Number of data fragments collected: 1
-request received
-Notification received, originally assigned to:  M1
-Notification received, originally assigned to:  M1
-Notification received, originally assigned to:  M1
-Transitioned to: precommit
 Processing update from CA ID (CAID): C1, Monitor ID (MID): M2
 Update received, originally assigned to:  M2
-Number of data fragments collected: 2
+Number of data fragments collected: 1
 Notification received, originally assigned to:  M2
 request received
 Notification received, originally assigned to:  M2
+Notification received, originally assigned to:  M1
+request sent, TR started
+Processing update from CA ID (CAID): C2, Monitor ID (MID): M1
+Update received, originally assigned to:  M1
+Number of data fragments collected: 1
+Notification received, originally assigned to:  M1
+request received
 Notification received, originally assigned to:  M2
+Notification received, originally assigned to:  M1
 Notification received, originally assigned to:  M2
+Transitioned to: precommit
+Transitioned to: precommit
+Notification received, originally assigned to:  M1
+Processing update from CA ID (CAID): C2, Monitor ID (MID): M2
+Update received, originally assigned to:  M2
+Number of data fragments collected: 2
+request received
 Notification received, originally assigned to:  M3
 request sent, TR started
 Processing update from CA ID (CAID): C1, Monitor ID (MID): M3
 Update received, originally assigned to:  M3
+Number of data fragments collected: 2
+Notification received, originally assigned to:  M2
+Notification received, originally assigned to:  M3
+request received
+Notification received, originally assigned to:  M2
+Notification received, originally assigned to:  M3
+Notification received, originally assigned to:  M2
+Notification received, originally assigned to:  M2
+Notification received, originally assigned to:  M3
+Notification received, originally assigned to:  M3
+request sent, TR started
+Processing update from CA ID (CAID): C2, Monitor ID (MID): M3
+Update received, originally assigned to:  M3
 Number of data fragments collected: 3
 Data reconstruction and verification succeeded. DataCheck set to true.
-Notification received, originally assigned to:  M3
-Notification received, originally assigned to:  M3
-Notification received, originally assigned to:  M3
 Notification received, originally assigned to:  M4
 request sent, TR started
+request received
 Processing update from CA ID (CAID): C1, Monitor ID (MID): M4
 Update received, originally assigned to:  M4
-Number of data fragments collected: 4
+Number of data fragments collected: 3
+Data reconstruction and verification succeeded. DataCheck set to true.
 Notification received, originally assigned to:  M4
 request received
+Notification received, originally assigned to:  M3
+Notification received, originally assigned to:  M3
+Notification received, originally assigned to:  M4
+Notification received, originally assigned to:  M3
 Notification received, originally assigned to:  M4
 Notification received, originally assigned to:  M4
+request sent, TR started
+Notification received, originally assigned to:  M1
+request sent, TR started
+Processing update from CA ID (CAID): C2, Monitor ID (MID): M4
+Update received, originally assigned to:  M4
+Number of data fragments collected: 4
+Processing update from CA ID (CAID): C1, Monitor ID (MID): M1
+Update received, originally assigned to:  M1
+Number of data fragments collected: 4
+Notification received, originally assigned to:  M4
+Notification received, originally assigned to:  M1
+Notification received, originally assigned to:  M4
+Notification received, originally assigned to:  M1
+Notification received, originally assigned to:  M4
+Notification received, originally assigned to:  M1
+Processing update from Logger ID (LID): L2, Monitor ID (MID): M1
+Received data size: 8889684 bytes
+Updated TrafficCount: 8889684, UpdateCount: 1
+M1
+Processing update from Logger ID (LID): L1, Monitor ID (MID): M4
+Received data size: 8889684 bytes
+Updated TrafficCount: 8889684, UpdateCount: 1
+M4
+Transitioned to:  precommit
+Transitioned to:  precommit
 WAKE_TR event triggered.
 WAKE_TR event triggered.
 WAKE_TR event triggered.
+WAKE_TR event triggered.
+WAKE_TR event triggered.
+WAKE_TR event triggered.
+Processing update from Logger ID (LID): L2, Monitor ID (MID): M2
+Received data size: 8889684 bytes
+Updated TrafficCount: 17779368, UpdateCount: 2
+M2
+Processing update from Logger ID (LID): L1, Monitor ID (MID): M1
+Received data size: 8889684 bytes
+Updated TrafficCount: 17779368, UpdateCount: 2
+M1
+Processing update from Logger ID (LID): L1, Monitor ID (MID): M2
+Received data size: 8889684 bytes
+Updated TrafficCount: 26669052, UpdateCount: 3
+M2
+6666667
+6666667
+6666667
+6666667
+Processing update from Logger ID (LID): L2, Monitor ID (MID): M3
+Received data size: 8889684 bytes
+Updated TrafficCount: 26669052, UpdateCount: 3
+M3
+6666667
+6666667
+6666667
+6666667
+WAKE_TM event triggered.
 WAKE_TM event triggered.
 number of partial Signatures:  1
+number of partial Signatures:  1
+Time elapsed since start: 42.456614925s
 number of partial Signatures:  2
-Time elapsed since start: 42.581677277s
+number of partial Signatures:  2
+Time elapsed since start: 42.458331528s
+Time elapsed since start: 42.45718229s
 revocation_partial_signature broadcasted
+revocation_partial_signature broadcasted
+number of partial Signatures:  1
+WAKE_TM event triggered.
+TBS:  {L2 1 10000 2024-12-17T01:38:30Z [141 162 215 98 10 5 27 86 221 12 16 233 59 105 62 56 205 171 104 199 83 142 80 76 151 42 35 44 218 175 147 65] {"sig":"","id":""}}
+number of partial Signatures:  2
+Time elapsed since start: 46.900093727s
+transparency_partial_signature broadcasted
+WAKE_TM event triggered.
+TBS:  {L1 1 10000 2024-12-17T01:38:30Z [141 162 215 98 10 5 27 86 221 12 16 233 59 105 62 56 205 171 104 199 83 142 80 76 151 42 35 44 218 175 147 65] {"sig":"","id":""}}
+number of partial Signatures:  1
+number of partial Signatures:  2
+Time elapsed since start: 46.96297305s
+transparency_partial_signature broadcasted
 Terminating the program after 1 minute.
 Converge times successfully dumped to M2.json

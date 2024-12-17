@@ -219,6 +219,7 @@ func (ca *CA) GenerateUpdateEEA() []byte {
 		rootHashRS := def.GenerateRootHash(RStree)
 		SRHEEA := ca.GenerateSRHEEA(dcrv, dcrv, rootHashRS)
 		//sthRS := ca.GenerateSTH(rootHashRS, totalBits)
+		originalLen := len(dcrv)
 		for id, update := range ca.Updates_EEA {
 			index := def.GetIndex(id)
 			//fmt.Println(index, idString)
@@ -227,6 +228,8 @@ func (ca *CA) GenerateUpdateEEA() []byte {
 			poi, _ := def.GeneratePOI(RStree, RSdataBlocks, index)
 			update.Head_rs = rootHashRS
 			update.PoI = poi
+			update.OriginalLen = originalLen // Set the original length here
+			ca.Updates_EEA[id] = update      // Store the modified update back
 		}
 		return dcrv
 	}

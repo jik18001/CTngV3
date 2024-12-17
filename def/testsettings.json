@@ -32,6 +32,6 @@
   "CRV_size": 1000000,
   "Revocation_ratio": 0.01,
   "Num_Loggers": 2,
-  "Certificate_size": 5000,
-  "Certificate_per_logger": 8000
+  "Certificate_size": 2000,
+  "Certificate_per_logger": 10000
 }
