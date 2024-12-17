@@ -16,19 +16,23 @@ type FSMLoggerEEA struct {
 	Period               int                                  // Current period of operation
 	STH                  def.STH                              // Valid STH received for the period
 	Updates              map[def.CTngID]def.Update_Logger_EEA // All the updates for this Logger, indexed by Monitor ID
-	Notifications        []def.Notification                   // Notifications cache for data collection
-	DataFragments        [][]byte                             // The certificates shares in this case
-	DataFragment_Counter int                                  // count of Data Fragments
+	DataFragments        [][]byte                             // The certificate shares
+	Bmodes               []string                             // Broadcasting modes for each data fragment
+	EEA_Notifications    [][]def.Notification                 // Notifications for each data fragment
+	DataFragment_Counter int                                  // Count of Data Fragments
 	Data                 [][]byte                             // The entire certificate file
-	DataCheck            bool                                 // compare agains the head_cert
+	DataCheck            bool                                 // Compare against the head_cert
 	Signaturelist        []def.SigFragment                    // Precommit and Post Commit State, sign over the STH
 	Signature            def.ThresholdSig                     // Done state (Serialized signature)
 	APoM                 def.APoM                             // APoM record against this Logger, if any
 	CPoM                 def.CPoM                             // CPoM record against this Logger, if any
-	TrafficCount         int                                  // Count of  traffic
-	UpdateCount          int                                  // Count of update received
+	TrafficCount         int                                  // Count of traffic
+	UpdateCount          int                                  // Count of updates received
 	StartTime            time.Time                            // Time when the FSMLoggerEEA was started
 	ConvergeTime         time.Duration                        // Time it takes to generate Threshold Signature
+	Bmode                string                               // Only used in the base version (Non-EEA)
+	Notifications        []def.Notification                   // Only used in the base version (Non-EEA)
+
 }
 
 // Method to retrieve the start time
@@ -132,7 +136,7 @@ func (l *FSMLoggerEEA) GetField(field string) (interface{}, error) {
 		return l.TrafficCount, nil
 	case "UpdateCount":
 		return l.UpdateCount, nil
-	case "Data": // New case for Data field
+	case "Data":
 		return l.Data, nil
 	default:
 		return nil, errors.New("unknown field")
@@ -303,4 +307,123 @@ func (l *FSMLoggerEEA) AddCPoM(cpom def.CPoM) error {
 
 	l.CPoM = cpom
 	return nil
+}
+
+func (l *FSMLoggerEEA) SetBmodeForFragment(index int, bmode string) error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	if index < 0 {
+		return errors.New("index cannot be negative")
+	}
+
+	// Ensure the Bmodes slice is large enough
+	if index >= len(l.Bmodes) {
+		newSize := index + 1
+
+		// Resize Bmodes
+		newBmodes := make([]string, newSize)
+		copy(newBmodes, l.Bmodes)
+		l.Bmodes = newBmodes
+
+		// Also resize DataFragments and EEA_Notifications to keep all slices in sync
+		newDataFragments := make([][]byte, newSize)
+		copy(newDataFragments, l.DataFragments)
+		l.DataFragments = newDataFragments
+
+		newEEA_Notifications := make([][]def.Notification, newSize)
+		copy(newEEA_Notifications, l.EEA_Notifications)
+		l.EEA_Notifications = newEEA_Notifications
+	}
+
+	l.Bmodes[index] = bmode
+	return nil
+}
+
+// Method to get the Bmode for a specific data fragment
+func (l *FSMLoggerEEA) GetBmodeForFragment(index int) (string, error) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
+	if index < 0 || index >= len(l.Bmodes) {
+		return "", errors.New("index out of range")
+	}
+
+	return l.Bmodes[index], nil
+}
+
+// Method to add a notification to a specific data fragment
+func (l *FSMLoggerEEA) AddNotificationToFragment(index int, notification def.Notification) error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	if index < 0 {
+		return errors.New("index cannot be negative")
+	}
+
+	// Ensure the EEA_Notifications slice is large enough
+	if index >= len(l.EEA_Notifications) {
+		newSize := index + 1
+		newEEA_Notifications := make([][]def.Notification, newSize)
+		copy(newEEA_Notifications, l.EEA_Notifications)
+		l.EEA_Notifications = newEEA_Notifications
+
+		// Also resize DataFragments and Bmodes to keep all slices in sync
+		newDataFragments := make([][]byte, newSize)
+		copy(newDataFragments, l.DataFragments)
+		l.DataFragments = newDataFragments
+
+		newBmodes := make([]string, newSize)
+		copy(newBmodes, l.Bmodes)
+		l.Bmodes = newBmodes
+	}
+
+	notifications := &l.EEA_Notifications[index]
+
+	// Check for duplicates
+	for _, existingNotification := range *notifications {
+		if reflect.DeepEqual(existingNotification, notification) {
+			return nil // Duplicate found, do not add
+		}
+	}
+
+	*notifications = append(*notifications, notification)
+	return nil
+}
+
+// Method to retrieve all notifications from a specific data fragment
+func (l *FSMLoggerEEA) GetNotificationsForFragment(index int) ([]def.Notification, error) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
+	if index < 0 || index >= len(l.EEA_Notifications) {
+		return nil, errors.New("index out of range")
+	}
+
+	notifications := l.EEA_Notifications[index]
+
+	// Return a copy to prevent external modification
+	notificationsCopy := make([]def.Notification, len(notifications))
+	copy(notificationsCopy, notifications)
+	return notificationsCopy, nil
+}
+
+// Method to retrieve the first notification from a specific data fragment
+func (l *FSMLoggerEEA) GetFirstNotificationForFragment(index int) (*def.Notification, error) {
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+
+	if index < 0 || index >= len(l.EEA_Notifications) {
+		return nil, errors.New("index out of range")
+	}
+
+	notifications := l.EEA_Notifications[index]
+
+	if len(notifications) == 0 {
+		return nil, nil // No notifications for this fragment
+	}
+
+	// Return a copy to prevent external modifications
+	notificationCopy := notifications[0]
+	return &notificationCopy, nil
 }

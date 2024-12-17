@@ -113,11 +113,12 @@ type Update_CA struct {
 
 // CA Update: Erasure Encoding version
 type Update_CA_EEA struct {
-	MonitorID CTngID `json:"MonitorID"`
-	FileShare []byte `json:"FileShare,omitempty"`
-	Head_rs   []byte `json:"Head_rs,omitempty"`
-	PoI       PoI    `json:"PoI,omitempty"`
-	SRH       SRH    `json:"SRH,omitempty"` //CAID and Period number are in the SRH
+	MonitorID   CTngID `json:"MonitorID"`
+	FileShare   []byte `json:"FileShare,omitempty"`
+	Head_rs     []byte `json:"Head_rs,omitempty"`
+	PoI         PoI    `json:"PoI,omitempty"`
+	SRH         SRH    `json:"SRH,omitempty"` //CAID and Period number are in the SRH
+	OriginalLen int    `json:"OriginalLen,omitempty"`
 }
 
 // Monitor related definitions

@@ -48,56 +48,79 @@ func LSMWakeup(m *MonitorEEA, lsm *FSMLoggerEEA, c def.Context) {
 		}
 		broadcastEEA(m, "/monitor/transparency_partial_signature", msd_json)
 		fmt.Println("transparency_partial_signature broadcasted")
-		/*
-			case def.WAKE_TR:
+	case def.WAKE_TR:
+		if content, ok := c.Content.(def.Notification); ok {
+			// Map Originator ID to logger index
+			loggerIndex, err := def.MapIDtoInt(def.CTngID(content.Originator))
+			if err != nil {
+				log.Printf("Failed to map Originator ID to int: %v", err)
+				return
+			}
+			fsmlogger := m.FSMLoggerEEAs[loggerIndex]
 
-				if content, ok := c.Content.(def.Notification); ok {
-					monitorIndex, err := def.MapIDtoInt(def.CTngID(content.Monitor))
+			// Determine the data fragment index
+			dataFragmentIndex, err := def.MapIDtoInt(def.CTngID(content.Monitor))
+			if err != nil {
+				log.Printf("Failed to map Monitor ID to int: %v", err)
+				return
+			}
+
+			// Retrieve the data fragment
+			dataFragment, err := fsmlogger.GetDataFragment(dataFragmentIndex)
+			if err != nil {
+				log.Printf("Failed to get data fragment for index %d: %v", dataFragmentIndex, err)
+				return
+			}
+
+			// If the data fragment is empty, initiate a request to retrieve it
+			if len(dataFragment) == 0 {
+				fmt.Println("WAKE_TR event triggered.")
+				log.Println("Data fragment is empty. Initiating requests to retrieve it.")
+
+				// Retrieve notifications for the specific fragment
+				notifications, err := fsmlogger.GetNotificationsForFragment(dataFragmentIndex)
+				if err != nil {
+					log.Printf("Failed to get notifications for fragment %d: %v", dataFragmentIndex, err)
+					return
+				}
+
+				new_note_fork := content
+				new_note_fork.Sender = m.Self_ip_port
+				new_note_json, err := json.Marshal(new_note_fork)
+				if err != nil {
+					log.Fatalf("Failed to marshal update: %v", err)
+				}
+
+				for _, notification := range notifications {
+					url := "http://" + notification.Sender + "/monitor/transparency_request"
+
+					response, err := m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
 					if err != nil {
-						log.Printf("Failed to map monitor ID to int: %v", err)
-						return
-					}
-					fsmlogger := m.FSMLoggerEEAs[monitorIndex]
-					// Retrieve the data fragment
-					dataFragment, err := fsmlogger.GetDataFragment(monitorIndex)
-					if err != nil {
-						log.Printf("Failed to get data fragment for monitor index %d: %v", monitorIndex, err)
-						return
+						log.Printf("Failed to send transparency request to %s: %v", notification.Sender, err)
+						continue
 					}
 
-					// If the data fragment is empty, initiate a request to retrieve it
-					if len(dataFragment) == 0 {
-						log.Println("Data fragment is empty. Initiating requests to retrieve it.")
-						notifications := fsmlogger.GetNotifications()
-						new_note_fork := content
-						new_note_fork.Sender = m.Self_ip_port
-						new_note_json, err := json.Marshal(new_note_fork)
-						if err != nil {
-							log.Fatalf("Failed to marshal update: %v", err)
-						}
-						for _, notification := range notifications {
-							url := "http://" + notification.Sender + "/monitor/transparency_request"
-
-							// Assume new_note_json is defined and contains the correct JSON data
-							response, err := m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
-							if err != nil {
-								log.Printf("Failed to send transparency request to %s: %v", notification.Sender, err)
-								continue
-							}
-
-							// Close the response body immediately after processing it
-							if response.Body != nil {
-								response.Body.Close()
-							}
-
-							log.Printf("Transparency request successfully sent to %s", notification.Sender)
-						}
-					} else {
-						log.Println("Data fragment already available. No need to initiate requests.")
+					// Close the response body immediately after processing it
+					if response.Body != nil {
+						response.Body.Close()
 					}
-				} else {
-					log.Println("Failed to assert c.Content to the expected type")
-				}*/
+
+					// Optionally log success
+					// log.Printf("Transparency request successfully sent to %s", notification.Sender)
+				}
+
+				// Update the Bmode for the specific fragment
+				err = fsmlogger.SetBmodeForFragment(dataFragmentIndex, def.MIN_WT)
+				if err != nil {
+					log.Printf("Failed to set Bmode for fragment %d: %v", dataFragmentIndex, err)
+				}
+			} else {
+				// Data fragment already available
+				// log.Println("Data fragment already available. No need to initiate requests.")
+			}
+		} else {
+			log.Println("Failed to assert c.Content to type def.Notification")
+		}
 
 	case def.WAKE_TU:
 		// Placeholder for WAKE_TU event handling
@@ -177,8 +200,6 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 		return
 	}
 	//validate data fragment
-	//--------------------------------------need to switch to another libaray because the parallel procoessing does not work ----------------------------------------------------
-
 	ok, _ := def.VerifyPOI2(update.Head_rs, update.PoI.Proof, update.FileShare)
 	if !ok {
 		fmt.Println("Data Fragment Verification Failed")
@@ -351,23 +372,35 @@ func logger_update_EEA_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Req
 	}
 
 	// Retrieve the FSMLogger corresponding to the STH LID in the update
-	index, _ := def.MapIDtoInt(def.CTngID(update.STH.LID))
-	fsmlogger := m.FSMLoggerEEAs[index]
+	loggerIndex, err := def.MapIDtoInt(def.CTngID(update.STH.LID))
+	if err != nil {
+		http.Error(w, "Invalid Logger ID in STH", http.StatusBadRequest)
+		return
+	}
+	fsmlogger := m.FSMLoggerEEAs[loggerIndex]
 
-	// Retrieve the current traffic count and ensure type assertion
+	// Print the Logger ID (LID) and Monitor ID (MID)
+	fmt.Printf("Processing update from Logger ID (LID): %s, Monitor ID (MID): %s\n", update.STH.LID, update.MonitorID)
+
+	// Retrieve the current traffic count
 	trafficcountInterface, _ := fsmlogger.GetField("TrafficCount")
 	trafficcount := trafficcountInterface.(int) // Assert as int
-	fmt.Println("New data received with size", byteCounter)
+
 	// Update the traffic count by adding the size of the request body
 	newcount := trafficcount + int(byteCounter)
 	fsmlogger.SetField("TrafficCount", newcount)
 
-	// Retrieve the current traffic count and ensure type assertion
+	// Retrieve the current update count
 	updatecountInterface, _ := fsmlogger.GetField("UpdateCount")
 	updatecount := updatecountInterface.(int) // Assert as int
-	// Update the traffic count by adding the size of the request body
+
+	// Increment the update count
 	newucount := updatecount + 1
 	fsmlogger.SetField("UpdateCount", newucount)
+
+	// Print the size of the received data and updated counts
+	fmt.Printf("Received data size: %d bytes\n", byteCounter)
+	fmt.Printf("Updated TrafficCount: %d, UpdateCount: %d\n", newcount, newucount)
 
 	// Process the logger update
 	process_logger_update_EEA(m, update.STH, update)
@@ -399,73 +432,123 @@ func transparency_request_handler(m *MonitorEEA, w http.ResponseWriter, r *http.
 		//fmt.Println("Failed to send update: ", err)
 	}
 }
+
 func transparency_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
 	var new_note def.Notification
 	if err := json.NewDecoder(r.Body).Decode(&new_note); err != nil {
-		http.Error(w, "Failed to decode update", http.StatusBadRequest)
+		http.Error(w, "Failed to decode notification", http.StatusBadRequest)
 		return
 	}
-	//fmt.Println(new_note)
+
+	// Map the Originator ID (Logger ID) to logger index
+	loggerIndex, err := def.MapIDtoInt(new_note.Originator)
+	if err != nil {
+		http.Error(w, "Failed to map Originator ID to logger index", http.StatusBadRequest)
+		return
+	}
+
+	// Locate the corresponding FSMLoggerEEA using the logger index
+	fsmlogger := m.FSMLoggerEEAs[loggerIndex]
+
+	// Create a copy of the notification and set the sender
 	new_note_fork := new_note
 	new_note_fork.Sender = m.Self_ip_port
-	// locate the corresponding FSMLoggerEEA
-	loggerindex, _ := def.MapIDtoInt(new_note.Originator)
-	fsmlogger := m.FSMLoggerEEAs[loggerindex]
-	if m.Settings.Broadcasting_Mode == def.MIN_WT {
-		existing_update, _ := fsmlogger.GetUpdate(new_note.Monitor)
-		//return if we already have the update
-		if !reflect.DeepEqual(existing_update, def.Update_Logger_EEA{}) {
+
+	// return if the file has already been reconstructed
+	value, _ := fsmlogger.GetField("DataCheck")
+	dataCheckValue, _ := value.(bool)
+	if dataCheckValue {
+		return
+	}
+	// Map the Monitor ID to data fragment index
+	dataFragmentIndex, err := def.MapIDtoInt(new_note.Monitor)
+	if err != nil {
+		http.Error(w, "Failed to map Monitor ID to data fragment index", http.StatusBadRequest)
+		return
+	}
+
+	existing_update, _ := fsmlogger.GetUpdate(new_note.Monitor)
+	// Return if we already have the update
+	if !reflect.DeepEqual(existing_update, def.Update_Logger_EEA{}) {
+		return
+	}
+
+	// Access the per-fragment Bmode with fallback to global Bmode
+	fsmlogger.lock.RLock()
+	if dataFragmentIndex >= len(fsmlogger.Bmodes) {
+		fsmlogger.lock.RUnlock()
+		http.Error(w, "Data fragment index out of range", http.StatusBadRequest)
+		return
+	}
+	fragmentBmode := fsmlogger.Bmodes[dataFragmentIndex]
+	if fragmentBmode == "" {
+		fragmentBmode = fsmlogger.Bmode
+	}
+	fsmlogger.lock.RUnlock()
+
+	// Handle MIN_WT (Minimum Wait Time) mode
+	if fragmentBmode == def.MIN_WT {
+
+		// Map Monitor ID to IP address
+		monitorIP, ok := m.Broadcast_targets[def.CTngID(new_note.Monitor)]
+		if !ok {
+			http.Error(w, "Monitor IP not found for Monitor ID", http.StatusBadRequest)
 			return
 		}
-		url := "http://" + new_note.Sender + "/monitor/transparency_request"
+
+		url := "http://" + monitorIP + "/monitor/transparency_request"
 		new_note_json, err := json.Marshal(new_note_fork)
 		if err != nil {
-			log.Fatalf("Failed to marshal update: %v", err)
+			log.Fatalf("Failed to marshal notification: %v", err)
 		}
 		_, err = m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
 		if err != nil {
-			//fmt.Println("Failed to send update: ", err)
+			log.Printf("Failed to send transparency request: %v", err)
 		}
 	}
-	if m.Settings.Broadcasting_Mode == def.MIN_BC {
-		// locate the corresponding FSMLoggerEEA
-		// loggerindex, _ := def.MapIDtoInt(new_note.Originator)
-		// fsmlogger := m.FSMLoggerEEAs[loggerindex]
-		if fsmlogger.GetFirstNotification() == nil {
-			url := "http://" + new_note.Sender + "/monitor/transparency_request"
+
+	// Handle MIN_BC mode
+	if fragmentBmode == def.MIN_BC {
+		// Check if there are any notifications for this fragment
+		firstNotification, err := fsmlogger.GetFirstNotificationForFragment(dataFragmentIndex)
+		if err != nil {
+			log.Fatalf("Failed to get first notification: %v", err)
+		}
+
+		if firstNotification == nil {
+			// Map Monitor ID to IP address
+			monitorIP, ok := m.Broadcast_targets[def.CTngID(new_note.Monitor)]
+			if !ok {
+				http.Error(w, "Monitor IP not found for Monitor ID", http.StatusBadRequest)
+				return
+			}
+
+			url := "http://" + monitorIP + "/monitor/transparency_request"
 			new_note_json, err := json.Marshal(new_note_fork)
 			if err != nil {
-				log.Fatalf("Failed to marshal update: %v", err)
+				log.Fatalf("Failed to marshal notification: %v", err)
 			}
 			_, err = m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
 			if err != nil {
-				//fmt.Println("Failed to send update: ", err)
+				log.Printf("Failed to send transparency request: %v", err)
 			}
 			NewContext := def.Context{
 				Label:   def.WAKE_TR,
 				Content: new_note,
 			}
-			time.AfterFunc(time.Duration(m.Settings.Update_Wait_time)*time.Second, func() {
-				LSMWakeup(m, fsmlogger, NewContext)
-				/*
-					monitorindex, _ := def.MapIDtoInt(def.CTngID(new_note.Monitor))
-					_, err := fsmlogger.GetDataFragment(monitorindex)
-					if err == nil {
-						notifications := fsmlogger.GetNotifications()
-						for _, notification := range notifications {
-							url := "http://" + notification.Sender + "/monitor/transparency_request"
-							_, err := m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
-							if err != nil {
-								//fmt.Println("Failed to send update: ", err)
-							}
-						}
-					}
-				*/
-			})
+			go func() {
+				time.AfterFunc(time.Duration(m.Settings.Update_Wait_time)*time.Second, func() {
+					LSMWakeup(m, fsmlogger, NewContext)
+				})
+			}()
 		}
-		fsmlogger.AddNotification(new_note)
-	}
 
+		// Add the notification to the specific data fragment
+		err = fsmlogger.AddNotificationToFragment(dataFragmentIndex, new_note)
+		if err != nil {
+			log.Fatalf("Failed to add notification: %v", err)
+		}
+	}
 }
 
 func transparency_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {

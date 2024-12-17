@@ -10,34 +10,52 @@ import (
 )
 
 type FSMCAEEA struct {
-	CTngID               def.CTngID                       // CTngID
-	State                string                           // Current state
-	lock                 sync.RWMutex                     // Concurrency control
-	Period               int                              // Current period of operation
-	SRH                  def.SRH                          // Valid SRH received for the period
-	Updates              map[def.CTngID]def.Update_CA_EEA // All the updates for this CA, indexed by Monitor ID
-	Notifications        []def.Notification               // Notifications cache for data collection
-	DataFragments        [][]byte                         // The certificate shares in this case
-	DataFragment_Counter int                              // Count of Data Fragments
-	DataCheck            bool                             // Compare against the head_cert
-	Signaturelist        []def.SigFragment                // Precommit and Post Commit State, sign over the SRH
-	Signature            def.ThresholdSig                 // Done state (Serialized signature)
-	APoM                 def.APoM                         // APoM record against this CA, if any
-	CPoM                 def.CPoM                         // CPoM record against this CA, if any
-	TrafficCount         int                              // Count of traffic
-	UpdateCount          int                              // Count of update received
-	StartTime            time.Time                        // Time when the FSMCAEEA was started
-	ConvergeTime         time.Duration                    // Time it takes to generate Threshold Signature
+	CTngID               def.CTngID
+	State                string
+	lock                 sync.RWMutex
+	Period               int
+	SRH                  def.SRH
+	Updates              map[def.CTngID]def.Update_CA_EEA
+	Notifications        []def.Notification
+	DataFragments        [][]byte
+	DataFragment_Counter int
+	DataCheck            bool
+	Signaturelist        []def.SigFragment
+	Signature            def.ThresholdSig
+	APoM                 def.APoM
+	CPoM                 def.CPoM
+	TrafficCount         int
+	UpdateCount          int
+	StartTime            time.Time
+	ConvergeTime         time.Duration
+	Bmode                string
+	Bmodes               []string
+	EEA_Notifications    [][]def.Notification
 }
 
-// Method to retrieve the start time
+// NewFSMCAEEA creates a new instance of FSMCAEEA with initialized maps and slices
+func NewFSMCAEEA(ctngID def.CTngID, initialState string, initialPeriod int, numFragments int) *FSMCAEEA {
+	return &FSMCAEEA{
+		CTngID:            ctngID,
+		State:             initialState,
+		Period:            initialPeriod,
+		Updates:           make(map[def.CTngID]def.Update_CA_EEA),
+		Notifications:     make([]def.Notification, 0),
+		DataFragments:     make([][]byte, 0),
+		Signaturelist:     make([]def.SigFragment, 0),
+		StartTime:         time.Now(),
+		Bmodes:            make([]string, numFragments),
+		EEA_Notifications: make([][]def.Notification, numFragments),
+	}
+}
+
 func (ca *FSMCAEEA) GetStartTime() time.Time {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
 	return ca.StartTime
 }
 
-// General method to set a field of the FSMCAEEA
+// SetField sets a field of the FSMCAEEA by name
 func (ca *FSMCAEEA) SetField(field string, value interface{}) error {
 	ca.lock.Lock()
 	defer ca.lock.Unlock()
@@ -91,13 +109,31 @@ func (ca *FSMCAEEA) SetField(field string, value interface{}) error {
 		} else {
 			return errors.New("invalid type for DataCheck")
 		}
+	case "Period":
+		if v, ok := value.(int); ok {
+			ca.Period = v
+		} else {
+			return errors.New("invalid type for Period")
+		}
+	case "Convergetime":
+		if v, ok := value.(time.Duration); ok {
+			ca.ConvergeTime = v
+		} else {
+			return errors.New("invalid type for Convergetime")
+		}
+	case "Bmode":
+		if v, ok := value.(string); ok {
+			ca.Bmode = v
+		} else {
+			return errors.New("invalid type for Bmode")
+		}
 	default:
 		return errors.New("unknown field")
 	}
 	return nil
 }
 
-// General method to get a field of the FSMCAEEA
+// GetField retrieves a field of the FSMCAEEA by name
 func (ca *FSMCAEEA) GetField(field string) (interface{}, error) {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
@@ -119,49 +155,55 @@ func (ca *FSMCAEEA) GetField(field string) (interface{}, error) {
 		return ca.TrafficCount, nil
 	case "UpdateCount":
 		return ca.UpdateCount, nil
+	case "Period":
+		return ca.Period, nil
+	case "Convergetime":
+		return ca.ConvergeTime, nil
+	case "Bmode":
+		return ca.Bmode, nil
 	default:
 		return nil, errors.New("unknown field")
 	}
 }
 
-// Method to retrieve the current value of DataFragment_Counter
 func (ca *FSMCAEEA) GetDataFragmentCounter() int {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
 	return ca.DataFragment_Counter
 }
 
-// Method to add a data fragment to the FSMCAEEA
 func (ca *FSMCAEEA) AddDataFragment(index int, dataFragment []byte) error {
 	ca.lock.Lock()
 	defer ca.lock.Unlock()
 
-	// Check if index is within the valid range
-	if index < 0 || index >= len(ca.DataFragments) {
-		return errors.New("index out of range")
+	if index < 0 {
+		return errors.New("index cannot be negative")
+	}
+	if index >= len(ca.DataFragments) {
+		newSize := index + 1
+		newDataFragments := make([][]byte, newSize)
+		copy(newDataFragments, ca.DataFragments)
+		ca.DataFragments = newDataFragments
 	}
 
-	// Only increment the counter if the fragment is non-empty and hasn't been set before
 	if len(dataFragment) > 0 && len(ca.DataFragments[index]) == 0 {
 		ca.DataFragment_Counter++
 	}
 
-	// Set the data fragment at the specified index
 	ca.DataFragments[index] = dataFragment
 	return nil
 }
 
-// Method to get a data fragment from the FSMCAEEA
 func (ca *FSMCAEEA) GetDataFragment(index int) ([]byte, error) {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
+
 	if index < 0 || index >= len(ca.DataFragments) {
 		return nil, errors.New("index out of range")
 	}
 	return ca.DataFragments[index], nil
 }
 
-// Method to retrieve all data fragments from the FSMCAEEA
 func (ca *FSMCAEEA) GetDataFragments() [][]byte {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
@@ -170,14 +212,15 @@ func (ca *FSMCAEEA) GetDataFragments() [][]byte {
 	return dataFragmentsCopy
 }
 
-// Method to store an update for the FSMCAEEA
 func (ca *FSMCAEEA) StoreUpdate(monitorID def.CTngID, update def.Update_CA_EEA) {
 	ca.lock.Lock()
 	defer ca.lock.Unlock()
+	if ca.Updates == nil {
+		ca.Updates = make(map[def.CTngID]def.Update_CA_EEA)
+	}
 	ca.Updates[monitorID] = update
 }
 
-// Method to get an update from the FSMCAEEA
 func (ca *FSMCAEEA) GetUpdate(monitorID def.CTngID) (def.Update_CA_EEA, error) {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
@@ -193,25 +236,22 @@ func (ca *FSMCAEEA) AddNotification(notification def.Notification) {
 	defer ca.lock.Unlock()
 
 	for _, existingNotification := range ca.Notifications {
-		if existingNotification == notification {
-			return // Duplicate found, do not add
+		if reflect.DeepEqual(existingNotification, notification) {
+			return // Duplicate found
 		}
 	}
 
 	ca.Notifications = append(ca.Notifications, notification)
 }
 
-// Method to retrieve all notifications from the FSMCAEEA
 func (ca *FSMCAEEA) GetNotifications() []def.Notification {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
-	// Return a copy of the notifications to avoid data race issues
 	notificationsCopy := make([]def.Notification, len(ca.Notifications))
 	copy(notificationsCopy, ca.Notifications)
 	return notificationsCopy
 }
 
-// Method to retrieve the first notification from the FSMCAEEA
 func (ca *FSMCAEEA) GetFirstNotification() *def.Notification {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
@@ -222,7 +262,6 @@ func (ca *FSMCAEEA) GetFirstNotification() *def.Notification {
 	return &ca.Notifications[0]
 }
 
-// Method to add a signature fragment to the Signaturelist
 func (ca *FSMCAEEA) AddSignatureFragment(signatureFragment def.SigFragment) {
 	ca.lock.Lock()
 	defer ca.lock.Unlock()
@@ -234,7 +273,6 @@ func (ca *FSMCAEEA) AddSignatureFragment(signatureFragment def.SigFragment) {
 	ca.Signaturelist = append(ca.Signaturelist, signatureFragment)
 }
 
-// Method to check if a signature fragment is already present in the Signaturelist
 func (ca *FSMCAEEA) IsSignatureFragmentPresent(signatureFragment def.SigFragment) bool {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
@@ -256,8 +294,125 @@ func (ca *FSMCAEEA) GetSignatureListLength() int {
 func (ca *FSMCAEEA) IsSignaturePresent() bool {
 	ca.lock.RLock()
 	defer ca.lock.RUnlock()
-	if (reflect.DeepEqual(ca.Signature, def.ThresholdSig{})) {
-		return false
+	return !reflect.DeepEqual(ca.Signature, def.ThresholdSig{})
+}
+
+func (ca *FSMCAEEA) GetBmodeForFragment(index int) (string, error) {
+	ca.lock.RLock()
+	defer ca.lock.RUnlock()
+
+	if index < 0 || index >= len(ca.Bmodes) {
+		return "", errors.New("index out of range")
 	}
-	return true
+
+	return ca.Bmodes[index], nil
+}
+
+func (ca *FSMCAEEA) SetBmodeForFragment(index int, bmode string) error {
+	ca.lock.Lock()
+	defer ca.lock.Unlock()
+
+	if index < 0 {
+		return errors.New("index cannot be negative")
+	}
+
+	if index >= len(ca.Bmodes) {
+		newSize := index + 1
+		newBmodes := make([]string, newSize)
+		copy(newBmodes, ca.Bmodes)
+		ca.Bmodes = newBmodes
+
+		newNotifications := make([][]def.Notification, newSize)
+		copy(newNotifications, ca.EEA_Notifications)
+		ca.EEA_Notifications = newNotifications
+	}
+
+	ca.Bmodes[index] = bmode
+	return nil
+}
+
+func (ca *FSMCAEEA) AddNotificationToFragment(index int, notification def.Notification) error {
+	ca.lock.Lock()
+	defer ca.lock.Unlock()
+
+	if index < 0 {
+		return errors.New("index cannot be negative")
+	}
+
+	if index >= len(ca.EEA_Notifications) {
+		newSize := index + 1
+		newEEA := make([][]def.Notification, newSize)
+		copy(newEEA, ca.EEA_Notifications)
+		ca.EEA_Notifications = newEEA
+
+		newBmodes := make([]string, newSize)
+		copy(newBmodes, ca.Bmodes)
+		ca.Bmodes = newBmodes
+	}
+
+	notifications := &ca.EEA_Notifications[index]
+
+	for _, existingNotification := range *notifications {
+		if reflect.DeepEqual(existingNotification, notification) {
+			return nil // Duplicate found
+		}
+	}
+
+	*notifications = append(*notifications, notification)
+	return nil
+}
+
+func (ca *FSMCAEEA) GetNotificationsForFragment(index int) ([]def.Notification, error) {
+	ca.lock.RLock()
+	defer ca.lock.RUnlock()
+
+	if index < 0 || index >= len(ca.EEA_Notifications) {
+		return nil, errors.New("index out of range")
+	}
+
+	notifications := ca.EEA_Notifications[index]
+	notificationsCopy := make([]def.Notification, len(notifications))
+	copy(notificationsCopy, notifications)
+	return notificationsCopy, nil
+}
+
+func (ca *FSMCAEEA) GetFirstNotificationForFragment(index int) (*def.Notification, error) {
+	ca.lock.RLock()
+	defer ca.lock.RUnlock()
+
+	if index < 0 || index >= len(ca.EEA_Notifications) {
+		return nil, errors.New("index out of range")
+	}
+
+	notifications := ca.EEA_Notifications[index]
+	if len(notifications) == 0 {
+		return nil, nil
+	}
+
+	notificationCopy := notifications[0]
+	return &notificationCopy, nil
+}
+
+func (ca *FSMCAEEA) AddCPoM(cpom def.CPoM) error {
+	ca.lock.Lock()
+	defer ca.lock.Unlock()
+
+	if !reflect.DeepEqual(ca.CPoM, def.CPoM{}) {
+		return errors.New("CPoM already present")
+	}
+
+	ca.CPoM = cpom
+	return nil
+}
+
+func (ca *FSMCAEEA) AddAPoM(apom def.APoM) error {
+	ca.lock.Lock()
+	defer ca.lock.Unlock()
+
+	if !reflect.DeepEqual(ca.APoM, def.APoM{}) {
+		return errors.New("APoM already present")
+	}
+
+	ca.APoM = apom
+	return nil
 }

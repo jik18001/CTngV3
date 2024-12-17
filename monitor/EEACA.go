@@ -31,7 +31,6 @@ func CSMWakeup(m *MonitorEEA, fsmca *FSMCAEEA, c def.Context) {
 		if err != nil {
 			log.Fatalf("Failed to serialize SRH: %v", err)
 		}
-		//fmt.Println("TBS: ", srh_fork)
 		sigfrag := m.ThresholdSign(string(srhBytes))
 		sigstring := sigfrag.String()
 		monitor_signed_data := MonitorSignedData{
@@ -51,30 +50,86 @@ func CSMWakeup(m *MonitorEEA, fsmca *FSMCAEEA, c def.Context) {
 
 	case def.WAKE_TV:
 		fmt.Println("WAKE_TV event triggered. Placeholder logic executed.")
+
+	case def.WAKE_TR:
+		fmt.Println("WAKE_TR event triggered.")
+		// Attempt to retrieve missing data fragments as done in logger code
+		if content, ok := c.Content.(def.Notification); ok {
+			// Map Originator (CA ID) to index
+			caindex, err := def.MapIDtoInt(content.Originator)
+			if err != nil {
+				log.Printf("Failed to map Originator ID to int: %v", err)
+				return
+			}
+			fsmca := m.FSMCAEEAs[caindex]
+
+			// Determine the data fragment index from the Monitor ID
+			dataFragmentIndex, err := def.MapIDtoInt(def.CTngID(content.Monitor))
+			if err != nil {
+				log.Printf("Failed to map Monitor ID to int: %v", err)
+				return
+			}
+
+			// Retrieve the data fragment
+			dataFragment, err := fsmca.GetDataFragment(dataFragmentIndex)
+			if err != nil {
+				log.Printf("Failed to get data fragment for index %d: %v", dataFragmentIndex, err)
+				return
+			}
+
+			// If the data fragment is empty, attempt to re-fetch it
+			if len(dataFragment) == 0 {
+				log.Println("Data fragment is empty. Initiating requests to retrieve it.")
+
+				new_note_fork := content
+				new_note_fork.Sender = m.Self_ip_port
+				new_note_json, err := json.Marshal(new_note_fork)
+				if err != nil {
+					log.Fatalf("Failed to marshal notification: %v", err)
+				}
+
+				// Since we don't have fragment-specific notifications or Bmodes,
+				// we will try contacting all known notification senders.
+				notifications := fsmca.GetNotifications()
+				for _, notification := range notifications {
+					url := "http://" + notification.Sender + "/monitor/revocation_request"
+					response, err := m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
+					if err != nil {
+						log.Printf("Failed to send revocation request to %s: %v", notification.Sender, err)
+						continue
+					}
+					if response.Body != nil {
+						response.Body.Close()
+					}
+				}
+			} else {
+				// Data fragment already available, no action needed
+			}
+		} else {
+			log.Println("Failed to assert c.Content to type def.Notification")
+		}
 	}
 }
 
 func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA) {
-	// Work with a fork of SRH
 	SRH_fork := srh
 	SRH_fork.Signature = def.RSASig{}
 	srhBytes, err := json.Marshal(SRH_fork)
 	if err != nil {
 		log.Fatalf("Failed to serialize SRH: %v", err)
 	}
-	//fmt.Println(SRH_fork, srh.Signature)
+
 	err = m.Crypto.Verify(srhBytes, srh.Signature)
 	if err != nil {
 		fmt.Println("Signature Verification Failed")
 		return
 	}
 
-	// Retrieve FSMCAEEA
 	index, _ := def.MapIDtoInt(def.CTngID(srh.CAID))
 	fsmca := m.FSMCAEEAs[index]
 	srh2, _ := fsmca.GetField("SRH")
 
-	// If we already have an existing SRH, compare with the incoming one
+	// Check for conflicting SRH (PoM)
 	if !reflect.DeepEqual(srh2, def.SRH{}) {
 		srhsigbytes, _ := json.Marshal(srh)
 		srhsigbytes2, _ := json.Marshal(srh2)
@@ -84,29 +139,47 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 				MetaData1:        srh,
 				MetaData2:        srh2,
 			}
-			cPoM_json, err := json.Marshal(cPoM)
-			if err != nil {
-				log.Fatalf("Failed to marshal update: %v", err)
+
+			// Attempt to add the CPoM to the FSMCAEEA instance
+			err := fsmca.AddCPoM(*cPoM)
+			// If this is the first CPoM, change the state and broadcast a minimal update
+			if err == nil {
+				fsmca.SetField("State", def.POM)
+				fmt.Println("Switched to PoM State")
+
+				// Create a minimal CA update with just the SRH and no file shares
+				SRH_only_update := def.Update_CA_EEA{
+					SRH:       srh,
+					FileShare: []byte{},
+					Head_rs:   []byte{},
+					PoI:       def.PoI{},
+				}
+				srh_json, err := json.Marshal(SRH_only_update)
+				if err != nil {
+					log.Fatalf("Failed to marshal update: %v", err)
+				}
+
+				// Broadcast the minimal CA update to inform all monitors
+				broadcastEEA(m, "/monitor/ca_update_EEA", srh_json)
 			}
-			broadcastEEA(m, "/monitor/PoM", cPoM_json)
 			return
 		}
 	}
 
-	// Check for duplicates
+	// Check for duplicate update
 	update2, _ := fsmca.GetUpdate(update.MonitorID)
 	if reflect.DeepEqual(update, update2) {
 		return
 	}
 
-	// Validate the data fragment
+	// Verify PoI for the fragment
 	ok, _ := def.VerifyPOI2(update.Head_rs, update.PoI.Proof, update.FileShare)
 	if !ok {
 		fmt.Println("Data Fragment Verification Failed")
 		return
 	}
 
-	// Store the Update
+	// Store the update and add the data fragment
 	fsmca.StoreUpdate(update.MonitorID, update)
 	monitorindex, _ := def.MapIDtoInt(def.CTngID(update.MonitorID))
 	frag, _ := fsmca.GetDataFragment(monitorindex)
@@ -114,21 +187,46 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 		return
 	}
 	fsmca.AddDataFragment(monitorindex, update.FileShare)
+
+	// Check if we have enough fragments to reconstruct
 	counter := fsmca.GetDataFragmentCounter()
-	fmt.Println(counter)
-	if counter == m.Settings.Num_Monitors-m.Settings.Mal {
-		dec, err := rs.New(counter, m.Settings.Mal)
+	fmt.Println("Number of data fragments collected:", counter)
+	required := m.Settings.Num_Monitors - m.Settings.Mal
+	if counter == required {
+		dec, err := rs.New(required, m.Settings.Mal)
 		if err != nil {
 			log.Fatalf("Error initializing Reed-Solomon decoder: %v", err)
 		}
 		fileShares := fsmca.GetDataFragments()
+
+		// Reconstruct the data
 		err = dec.Reconstruct(fileShares)
 		if err != nil {
 			log.Fatalf("Error during Reed-Solomon decoding: %v", err)
 		}
+
+		// Concatenate the first 'required' shards to get the compressed DCRV (just like the CA used dcrv)
+		concatenatedData := []byte{}
+		for _, shard := range fileShares[:required] {
+			concatenatedData = append(concatenatedData, shard...)
+		}
+
+		//Due to the limitation of the EEA encoding, padding is required, for benign system PoC skipping this step for now
+		//hcrv, _ := def.GenerateSHA256(concatenatedData)
+		//hdcrv, _ := def.GenerateSHA256(concatenatedData)
+
+		//recreatedHead := append(hcrv, hdcrv...)
+		//recreatedHead = append(recreatedHead, update.Head_rs...)
+
+		// Compare recreatedHead with srh.Head from the CA
+		// if !reflect.DeepEqual(recreatedHead, srh.Head) {
+		// fmt.Println("SRH.Head mismatch! Data verification failed.")
+		// return
 		fsmca.SetField("DataCheck", true)
+		fmt.Println("Data reconstruction and verification succeeded. DataCheck set to true.")
 	}
 
+	// Send a notification after handling the update
 	new_note := def.Notification{
 		Type:       def.TUEEA,
 		Originator: def.CTngID(update.SRH.CAID),
@@ -145,18 +243,18 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 	if reflect.DeepEqual(srh2, def.SRH{}) {
 		fsmca.SetField("SRH", srh)
 		fsmca.SetField("State", def.PRECOMMIT)
-		fmt.Println("Transitioned to: ", fsmca.State)
+		fmt.Println("Transitioned to:", fsmca.State)
 		srh_json, err := json.Marshal(srh)
 		if err != nil {
 			log.Fatalf("Failed to marshal update: %v", err)
 		}
 		broadcastEEA(m, "/monitor/SRH", srh_json)
+
 		NewContext := def.Context{
 			Label: def.WAKE_TM,
 		}
 		go func() {
 			time.AfterFunc(time.Duration(m.Settings.Mature_Wait_time+m.Settings.Verification_Wait_time)*time.Second, func() {
-
 				value, _ := fsmca.GetField("DataCheck")
 				dataCheckValue, _ := value.(bool)
 				if dataCheckValue {
@@ -165,7 +263,6 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 					fmt.Println("Place holder for accusation.")
 				}
 			})
-			return
 		}()
 	}
 }
@@ -195,7 +292,8 @@ func ca_update_EEA_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request
 
 	index, _ := def.MapIDtoInt(def.CTngID(update.SRH.CAID))
 	fsmca := m.FSMCAEEAs[index]
-
+	// Print the Logger ID (LID) and Monitor ID (MID)
+	fmt.Printf("Processing update from CA ID (CAID): %s, Monitor ID (MID): %s\n", update.SRH.CAID, update.MonitorID)
 	trafficcountInterface, _ := fsmca.GetField("TrafficCount")
 	trafficcount := trafficcountInterface.(int)
 
@@ -243,37 +341,81 @@ func revocation_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *ht
 		return
 	}
 	fmt.Println("Notification received, originally assigned to: ", new_note.Monitor)
+
+	// Create a copy of the notification to modify the Sender
 	new_note_fork := new_note
 	new_note_fork.Sender = m.Self_ip_port
 
-	caindex, _ := def.MapIDtoInt(new_note.Originator)
+	// Map Originator ID (CA ID) to CA index
+	caindex, err := def.MapIDtoInt(new_note.Originator)
+	if err != nil {
+		http.Error(w, "Failed to map Originator ID to CA index", http.StatusBadRequest)
+		return
+	}
+
+	// Retrieve the corresponding FSMCAEEA
 	fsmca := m.FSMCAEEAs[caindex]
-	if m.Settings.Broadcasting_Mode == def.MIN_WT {
-		existing_update, _ := fsmca.GetUpdate(new_note.Monitor)
-		if !reflect.DeepEqual(existing_update, def.Update_CA_EEA{}) {
-			return
-		}
+
+	// Map Monitor ID to data fragment index
+	dataFragmentIndex, err := def.MapIDtoInt(new_note.Monitor)
+	if err != nil {
+		http.Error(w, "Failed to map Monitor ID to data fragment index", http.StatusBadRequest)
+		return
+	}
+
+	// Retrieve the Bmode for this fragment
+	bmode, err := fsmca.GetBmodeForFragment(dataFragmentIndex)
+	if err != nil {
+		// If no Bmode for this fragment, handle gracefully or set a default
+		fmt.Println("Failed to get Bmode for fragment:", err)
+		return
+	}
+
+	// Check if we already have the update
+	existing_update, _ := fsmca.GetUpdate(new_note.Monitor)
+	if !reflect.DeepEqual(existing_update, def.Update_CA_EEA{}) {
+		// We already have this update, so no need to request it again
+		//fmt.Println("dup update")
+		return
+	}
+
+	// Logic depends on the current broadcasting mode
+	if bmode == def.MIN_WT {
+		// If Bmode is MIN_WT, we send a revocation request immediately
 		url := "http://" + new_note.Sender + "/monitor/revocation_request"
 		new_note_json, err := json.Marshal(new_note_fork)
 		if err != nil {
-			log.Fatalf("Failed to marshal update: %v", err)
+			log.Fatalf("Failed to marshal notification: %v", err)
 		}
+
 		_, err = m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
 		if err != nil {
-			fmt.Println("Failed to send update: ", err)
+			fmt.Println("Failed to send revocation request:", err)
 		}
 	}
-	if m.Settings.Broadcasting_Mode == def.MIN_BC {
-		if fsmca.GetFirstNotification() == nil {
+
+	if bmode == def.MIN_BC {
+		// Check if there's already a first notification for this fragment
+		firstNotification, err := fsmca.GetFirstNotificationForFragment(dataFragmentIndex)
+		if err != nil {
+			log.Fatalf("Failed to get first notification: %v", err)
+		}
+
+		if firstNotification == nil {
+			// If no first notification, send a revocation request and schedule WAKE_TR
+			fmt.Println("request sent, TR started")
 			url := "http://" + new_note.Sender + "/monitor/revocation_request"
 			new_note_json, err := json.Marshal(new_note_fork)
 			if err != nil {
-				log.Fatalf("Failed to marshal update: %v", err)
+				log.Fatalf("Failed to marshal notification: %v", err)
 			}
+
 			_, err = m.Client.Post(url, "application/json", bytes.NewBuffer(new_note_json))
 			if err != nil {
-				fmt.Println("Failed to send update: ", err)
+				fmt.Println("Failed to send revocation request:", err)
 			}
+
+			// Schedule a WAKE_TR event after Update_Wait_time
 			NewContext := def.Context{
 				Label:   def.WAKE_TR,
 				Content: new_note,
@@ -282,12 +424,17 @@ func revocation_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *ht
 				CSMWakeup(m, fsmca, NewContext)
 			})
 		}
-		fsmca.AddNotification(new_note)
+
+		// Add this notification to the fragment-specific notifications
+		err = fsmca.AddNotificationToFragment(dataFragmentIndex, new_note)
+		if err != nil {
+			log.Fatalf("Failed to add notification to fragment: %v", err)
+		}
 	}
 }
 
 func revocation_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request) {
-	fmt.Println("MSD received")
+	//fmt.Println("MSD received")
 	var msd MonitorSignedData
 	if err := json.NewDecoder(r.Body).Decode(&msd); err != nil {
 		http.Error(w, "Failed to decode update", http.StatusBadRequest)
@@ -311,7 +458,6 @@ func revocation_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter, 
 	if err != nil {
 		log.Fatalf("Failed to serialize SRH: %v", err)
 	}
-	//fmt.Println("TBV: ", srh_fork)
 	sigfrag, _ := def.SigFragmentFromString(msd.Signature)
 	err = m.FragmentVerify(string(srhBytes), sigfrag)
 	if err != nil {
@@ -320,22 +466,22 @@ func revocation_partial_signature_handler(m *MonitorEEA, w http.ResponseWriter, 
 	}
 
 	if fsmca.IsSignatureFragmentPresent(sigfrag) {
-		//fmt.Println("partial Signature duplicates.")
 		return
 	}
 	if fsmca.IsSignaturePresent() || fsmca.GetSignatureListLength() >= m.Settings.Mal+1 {
-		//fmt.Println("Threshold Signature already exists.")
 		return
 	}
 	fsmca.AddSignatureFragment(sigfrag)
 	fmt.Println("number of partial Signatures: ", fsmca.GetSignatureListLength())
 	if fsmca.GetSignatureListLength() == m.Settings.Mal+1 {
 		sig := m.Aggregate(fsmca.Signaturelist)
-		//fsmca.Signature = sig
 		fsmca.SetField("Signature", sig)
+
 		startTime := fsmca.GetStartTime()
 		elapsedTime := time.Since(startTime)
-		fsmca.ConvergeTime = elapsedTime
+		// Use SetField for concurrency safety
+		fsmca.SetField("Convergetime", elapsedTime)
+
 		fmt.Println("Time elapsed since start:", elapsedTime)
 	}
 	msd_json, err := json.Marshal(msd)

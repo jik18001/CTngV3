@@ -40,64 +40,83 @@ func (cw *countWriter) Write(p []byte) (int, error) {
 func NewMonitorEEA(CTngID def.CTngID, cryptofile string, settingfile string) *MonitorEEA {
 	// Initialize a new StoredCrypto object.
 	restoredconfig := new(def.StoredCrypto)
-	// Initialize a new Setting object.
+	// Initialize a new Settings object.
 	restoredsetting := new(def.Settings)
-	// Load the configuration from the file.
+	// Load the configuration from the files.
 	def.LoadData(&restoredsetting, settingfile)
 	def.LoadData(&restoredconfig, cryptofile)
 	config, err := def.DecodeCrypto(restoredconfig)
 	if err != nil {
 		def.HandleError(err, "DecodeCrypto")
 	}
+
 	numFSMCAEEAs := restoredsetting.Num_CAs
 	numFSMLoggerEEAs := restoredsetting.Num_Loggers
 	numMonitors := restoredsetting.Num_Monitors
+
 	fsmCAs := make([]*FSMCAEEA, numFSMCAEEAs)
 	fsmLoggers := make([]*FSMLoggerEEA, numFSMLoggerEEAs)
-	// CA to be added here
 
+	// Initialize FSMCAEEA instances
 	for i := 0; i < numFSMCAEEAs; i++ {
 		id := def.CTngID(fmt.Sprintf("C%d", i+1))
 		fsmCAs[i] = &FSMCAEEA{
-			CTngID:        id,
-			State:         def.INIT,
-			lock:          sync.RWMutex{},
-			Period:        0,
-			SRH:           def.SRH{},
-			Updates:       make(map[def.CTngID]def.Update_CA_EEA),
-			Notifications: []def.Notification{},
-			DataFragments: make([][]byte, numMonitors),
-			DataCheck:     false,
-			Signaturelist: []def.SigFragment{},
-			Signature:     def.ThresholdSig{},
-			APoM:          def.APoM{},
-			CPoM:          def.CPoM{},
-			StartTime:     time.Now(),
-			TrafficCount:  0,
-			UpdateCount:   0,
+			CTngID:               id,
+			State:                def.INIT,
+			lock:                 sync.RWMutex{},
+			Period:               0,
+			SRH:                  def.SRH{},
+			Updates:              make(map[def.CTngID]def.Update_CA_EEA),
+			Notifications:        make([]def.Notification, 0),
+			DataFragments:        make([][]byte, numMonitors),
+			DataFragment_Counter: 0,
+			DataCheck:            false,
+			Signaturelist:        make([]def.SigFragment, 0),
+			Signature:            def.ThresholdSig{},
+			APoM:                 def.APoM{},
+			CPoM:                 def.CPoM{},
+			TrafficCount:         0,
+			UpdateCount:          0,
+			StartTime:            time.Now(),
+			ConvergeTime:         0,
+			Bmodes:               make([]string, numMonitors),
+			EEA_Notifications:    make([][]def.Notification, numMonitors),
 		}
 	}
 
+	// Initialize FSMLoggerEEA instances
 	for i := 0; i < numFSMLoggerEEAs; i++ {
 		id := def.CTngID(fmt.Sprintf("L%d", i+1))
 		fsmLoggers[i] = &FSMLoggerEEA{
-			CTngID:        id,
-			State:         def.INIT,
-			lock:          sync.RWMutex{},
-			Period:        0,
-			STH:           def.STH{},
-			Updates:       make(map[def.CTngID]def.Update_Logger_EEA),
-			Notifications: []def.Notification{},
-			DataFragments: make([][]byte, numMonitors),
-			DataCheck:     false,
-			Data:          [][]byte{},
-			Signaturelist: []def.SigFragment{},
-			Signature:     def.ThresholdSig{},
-			APoM:          def.APoM{},
-			CPoM:          def.CPoM{},
-			StartTime:     time.Now(),
-			TrafficCount:  0,
-			UpdateCount:   0,
+			CTngID:               id,
+			State:                def.INIT,
+			lock:                 sync.RWMutex{},
+			Period:               0,
+			STH:                  def.STH{},
+			Updates:              make(map[def.CTngID]def.Update_Logger_EEA),
+			DataFragments:        make([][]byte, numMonitors),
+			Bmode:                restoredsetting.Broadcasting_Mode,
+			Bmodes:               make([]string, numMonitors),
+			EEA_Notifications:    make([][]def.Notification, numMonitors),
+			DataFragment_Counter: 0,
+			Data:                 make([][]byte, 0),
+			DataCheck:            false,
+			Signaturelist:        make([]def.SigFragment, 0),
+			Signature:            def.ThresholdSig{},
+			APoM:                 def.APoM{},
+			CPoM:                 def.CPoM{},
+			StartTime:            time.Now(),
+			TrafficCount:         0,
+			UpdateCount:          0,
+			ConvergeTime:         0,
+		}
+
+		// Initialize Bmodes per fragment to the global Bmode
+		for j := 0; j < numMonitors; j++ {
+			fsmLoggers[i].Bmodes[j] = restoredsetting.Broadcasting_Mode
+		}
+		for j := 0; j < numMonitors; j++ {
+			fsmCAs[i].Bmodes[j] = restoredsetting.Broadcasting_Mode
 		}
 	}
 
@@ -111,6 +130,7 @@ func NewMonitorEEA(CTngID def.CTngID, cryptofile string, settingfile string) *Mo
 			ip_port = value
 		}
 	}
+
 	return &MonitorEEA{
 		CTngID:            CTngID,
 		Self_ip_port:      ip_port,
