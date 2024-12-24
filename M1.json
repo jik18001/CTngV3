@@ -3,32 +3,16 @@
     "monitor_id": "M1",
     "entity_id": "L1",
     "entity_type": "Logger",
-    "converge_time": 47.009881937,
-    "traffic": "25.43 MB",
-    "update_count": 3
-  },
-  {
-    "monitor_id": "M1",
-    "entity_id": "L2",
-    "entity_type": "Logger",
-    "converge_time": 46.941386588,
-    "traffic": "25.43 MB",
+    "converge_time": 47.42970308,
+    "traffic": "101.73 MB",
     "update_count": 3
   },
   {
     "monitor_id": "M1",
     "entity_id": "C1",
     "entity_type": "CA",
-    "converge_time": 42.499222695,
-    "traffic": "29.88 KB",
-    "update_count": 4
-  },
-  {
-    "monitor_id": "M1",
-    "entity_id": "C2",
-    "entity_type": "CA",
-    "converge_time": 42.497246956,
-    "traffic": "29.79 KB",
+    "converge_time": 32.742930049,
+    "traffic": "827.88 KB",
     "update_count": 4
   }
 ]

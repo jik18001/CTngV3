@@ -146,10 +146,18 @@ func Generate_IP_Json_template(num_ca int, num_logger int, num_monitor int, mal 
 	portmap := make(map[CTngID]string)
 
 	current_port := starting_port
+	/*
+		for i := 0; i < num_ca; i++ {
+			id := CTngID(fmt.Sprintf("C%d", i+1))
+			ipmap[id] = ca_mask + strconv.Itoa((i%10 + ca_offset))
+			portmap[id] = strconv.Itoa(current_port)
+			current_port++
+		}
+	*/
 
 	for i := 0; i < num_ca; i++ {
 		id := CTngID(fmt.Sprintf("C%d", i+1))
-		ipmap[id] = ca_mask + strconv.Itoa((i%10 + ca_offset))
+		ipmap[id] = ca_mask + strconv.Itoa((i + ca_offset))
 		portmap[id] = strconv.Itoa(current_port)
 		current_port++
 	}

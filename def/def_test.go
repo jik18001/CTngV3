@@ -374,8 +374,8 @@ func TestCryptoIO(t *testing.T) {
 func TestSimulationIO(t *testing.T) {
 	num_monitors := 4
 	Mal := 1
-	num_loggers := 2
-	num_cas := 2
+	num_loggers := 1
+	num_cas := 1
 	// Generate a new configuration using CTngKeyGen function with specified parameters.
 	newconfig := CTngKeyGen(num_loggers, num_cas, num_monitors, Mal+1)
 
@@ -395,6 +395,7 @@ func TestSimulationIO(t *testing.T) {
 	mal := flag.Int("mal", Mal, "Number of faulty monitors allowed")
 
 	// Define command-line flags for IP masks and offsets.
+
 	ca_mask := flag.String("ca_mask", "127.0.0.", "CA IP mask")
 	ca_offset := flag.Int("ca_offset", 10, "CA IP offset")
 	logger_mask := flag.String("logger_mask", "127.0.1.", "Logger IP mask")
@@ -402,6 +403,15 @@ func TestSimulationIO(t *testing.T) {
 	monitor_mask := flag.String("monitor_mask", "127.0.2.", "Monitor IP mask")
 	monitor_offset := flag.Int("monitor_offset", 30, "Monitor IP offset")
 
+	//deter mask and offset
+	/*
+		ca_mask := flag.String("ca_mask", "172.30.0.", "CA IP mask")
+		ca_offset := flag.Int("ca_offset", 11, "CA IP offset")
+		logger_mask := flag.String("logger_mask", "172.30.0.", "Logger IP mask")
+		logger_offset := flag.Int("logger_offset", 13, "Logger IP offset")
+		monitor_mask := flag.String("monitor_mask", "172.30.0.", "Monitor IP mask")
+		monitor_offset := flag.Int("monitor_offset", 34, "Monitor IP offset")
+	*/
 	// Define command-line flags for starting port number, wait time, and other settings.
 	starting_port := flag.Int("starting_port", 8000, "Starting port number")
 	update_wait_time := flag.Int("update_wait_time", 5, "Wait time in seconds")
@@ -413,10 +423,10 @@ func TestSimulationIO(t *testing.T) {
 	bmode := flag.String("bmode", MIN_BC, "Mode: Min bandwidth or Min wait time")
 	//dmode := flag.String("dmode", DEFAULT, "Mode: default or EEA")
 	dmode := flag.String("dmode", EEA, "Mode: default or EEA")
-	crvsize := flag.Int("CRV_size", 1000000, "CRV_size")
-	revocation_ratio := flag.Float64("Revocation_ratio", 0.01, "Revocation_ratio (float)")
-	certificate_size := flag.Int("Cerificate_size", 5000, "Size of dummy certificate, in Bytes")
-	certificate_per_logger := flag.Int("Certificate_per_logger", 8000, "New certificates per period")
+	crvsize := flag.Int("CRV_size", 100000000, "CRV_size")
+	revocation_ratio := flag.Float64("Revocation_ratio", 0.002, "Revocation_ratio (float)")
+	certificate_size := flag.Int("Cerificate_size", 2000, "Size of dummy certificate, in Bytes")
+	certificate_per_logger := flag.Int("Certificate_per_logger", 40000, "New certificates per period")
 
 	// Parse the command-line flags.
 	flag.Parse()

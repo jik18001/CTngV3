@@ -278,8 +278,16 @@ func (ca *CA) Send_Update_EEA() {
 
 func StartCA(id def.CTngID, cryptofile string, settingfile string) {
 	newca := NewCA(id, cryptofile, settingfile)
+	fmt.Println(newca.CTngID)
 	newca.GenerateUpdateEEA()
 	//fmt.Println(newca.Updates_EEA[def.CTngID("M1")].Head_rs)
 	//fmt.Println(newca.Updates_EEA[def.CTngID("M1")].SRH)
 	newca.Send_Update_EEA()
+}
+
+func StartCADeter(cryptofile string, settingfile string) {
+	for i := 1; i <= 100; i++ {
+		id := def.CTngID(fmt.Sprintf("C%d", i))
+		StartCA(id, cryptofile, settingfile)
+	}
 }

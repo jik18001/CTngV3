@@ -165,7 +165,7 @@ func (l *Logger) GenerateUpdate() {
 			in[j] = byte((i + j) & 0xff)
 		}
 	}
-	// Split the data into 5KB blocks and compute the Merkle Tree
+	// Split the data into blocks and compute the Merkle Tree
 	var dataBlocks []merkletree.DataBlock
 	for i := range data[:(l.NumMonitors - l.Mal)] {
 		for j := 0; j < len(data[i]); j += l.Settings.Certificate_size {

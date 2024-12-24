@@ -11,21 +11,23 @@ import (
 	monitor "github.com/jik18001/CTngV3/monitor"
 )
 
-const (
-	cryptofile  = "def/testconfig.json"
-	settingfile = "def/testsettings.json"
-)
-
 func main() {
-	if len(os.Args) < 3 && os.Args[1] != "Script" {
-		fmt.Println("Usage: go run ctng.go <CA|Logger|Monitor|Script> <CTngID>")
+	if len(os.Args) < 4 && os.Args[1] != "Script" {
+		fmt.Println("Usage: go run ctng.go <CA|Logger|Monitor|Script> <CTngID> <local|deter>")
 		os.Exit(1)
 	}
 
-	time.AfterFunc(1*time.Minute, func() {
+	time.AfterFunc(2*time.Minute, func() {
 		fmt.Println("Terminating the program after 1 minute.")
 		os.Exit(0)
 	})
+
+	var cryptofile = "def/testconfig.json"
+	var settingfile = "def/testsettings.json"
+	if os.Args[3] == "deter" {
+		cryptofile = "def/deterconfig.json"
+		settingfile = "def/detersettings.json"
+	}
 
 	// Initialize a new Setting object.
 	restoredsetting := new(def.Settings)
@@ -45,6 +47,8 @@ func main() {
 		CTngID := def.CTngID(os.Args[2])
 		fmt.Println(CTngID)
 		ca.StartCA(CTngID, cryptofile, settingfile)
+	case "CAD":
+		ca.StartCADeter(cryptofile, settingfile)
 	case "Logger":
 		CTngID := def.CTngID(os.Args[2])
 		fmt.Println(CTngID)

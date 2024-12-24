@@ -1,9 +1,9 @@
-Configuration Loaded: 2 CA(s), 2 Logger(s), 4 Monitor(s)
+Configuration Loaded: 1 CA(s), 1 Logger(s), 4 Monitor(s)
 L1
-[41 174 160 92 60 73 208 221 80 139 248 111 217 206 235 136 42 169 102 108 138 113 176 126 202 2 15 172 163 230 23 201]
-[53 255 59 86 56 4 103 219 169 157 192 203 34 122 8 184 237 246 228 64 245 39 154 141 188 211 160 0 208 217 165 73]
-Update sent to 127.0.2.33:8007, Traffic: 8889684 bytes
-Update sent to 127.0.2.30:8004, Traffic: 8889684 bytes
-Update sent to 127.0.2.31:8005, Traffic: 8889684 bytes
-Update sent to 127.0.2.32:8006, Traffic: 8889684 bytes
-Total traffic sent for EEA updates: 35558736 bytes
+[198 55 197 11 111 230 33 133 187 199 6 83 77 33 163 216 182 61 32 22 24 248 157 187 52 47 194 197 199 129 235 22]
+[162 250 95 88 39 234 81 105 214 5 216 76 172 186 17 248 241 185 21 16 183 249 107 118 25 169 193 227 183 76 82 217]
+Update sent to 127.0.2.32:8004, Traffic: 35556348 bytes
+Update sent to 127.0.2.33:8005, Traffic: 35556348 bytes
+Update sent to 127.0.2.30:8002, Traffic: 35556348 bytes
+Update sent to 127.0.2.31:8003, Traffic: 35556348 bytes
+Total traffic sent for EEA updates: 142225392 bytes

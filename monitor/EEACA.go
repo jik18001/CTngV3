@@ -347,7 +347,7 @@ func revocation_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *ht
 		http.Error(w, "Failed to decode update", http.StatusBadRequest)
 		return
 	}
-	fmt.Println("Notification received, originally assigned to: ", new_note.Monitor)
+	fmt.Println("Notification received, originally assigned to: ", new_note.Monitor, " with CAID = ", new_note.Originator)
 
 	// Create a copy of the notification to modify the Sender
 	new_note_fork := new_note
@@ -365,6 +365,7 @@ func revocation_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *ht
 
 	// Map Monitor ID to data fragment index
 	dataFragmentIndex, err := def.MapIDtoInt(new_note.Monitor)
+
 	if err != nil {
 		http.Error(w, "Failed to map Monitor ID to data fragment index", http.StatusBadRequest)
 		return
@@ -377,7 +378,6 @@ func revocation_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *ht
 		fmt.Println("Failed to get Bmode for fragment:", err)
 		return
 	}
-
 	// Check if we already have the update
 	existing_update, _ := fsmca.GetUpdate(new_note.Monitor)
 	if !reflect.DeepEqual(existing_update, def.Update_CA_EEA{}) {
@@ -400,14 +400,14 @@ func revocation_notification_handler(m *MonitorEEA, w http.ResponseWriter, r *ht
 			fmt.Println("Failed to send revocation request:", err)
 		}
 	}
-
+	fmt.Println("CA index mapped from CAID =", caindex, "datafragmentindex mapped from MID = ", dataFragmentIndex, "with Bmode: ", bmode)
 	if bmode == def.MIN_BC {
 		// Check if there's already a first notification for this fragment
 		firstNotification, err := fsmca.GetFirstNotificationForFragment(dataFragmentIndex)
 		if err != nil {
 			log.Fatalf("Failed to get first notification: %v", err)
 		}
-
+		fmt.Println("CA index mapped from CAID =", caindex, "datafragmentindex mapped from MID = ", dataFragmentIndex, "with Bmode: ", bmode)
 		if firstNotification == nil {
 			// If no first notification, send a revocation request and schedule WAKE_TR
 			fmt.Println("request sent, TR started")

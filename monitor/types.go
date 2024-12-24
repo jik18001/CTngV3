@@ -82,6 +82,9 @@ func NewMonitorEEA(CTngID def.CTngID, cryptofile string, settingfile string) *Mo
 			Bmodes:               make([]string, numMonitors),
 			EEA_Notifications:    make([][]def.Notification, numMonitors),
 		}
+		for j := 0; j < numMonitors; j++ {
+			fsmCAs[i].Bmodes[j] = restoredsetting.Broadcasting_Mode
+		}
 	}
 
 	// Initialize FSMLoggerEEA instances
@@ -114,9 +117,6 @@ func NewMonitorEEA(CTngID def.CTngID, cryptofile string, settingfile string) *Mo
 		// Initialize Bmodes per fragment to the global Bmode
 		for j := 0; j < numMonitors; j++ {
 			fsmLoggers[i].Bmodes[j] = restoredsetting.Broadcasting_Mode
-		}
-		for j := 0; j < numMonitors; j++ {
-			fsmCAs[i].Bmodes[j] = restoredsetting.Broadcasting_Mode
 		}
 	}
 
