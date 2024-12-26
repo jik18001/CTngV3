@@ -1,10 +1,12 @@
 Configuration Loaded: 1 CA(s), 1 Logger(s), 4 Monitor(s)
 C1
 C1
-Number of monitors:  4  Number of data shares:  3  Number of parity shares:  1
-length of DCRV post-compression 475000
-datasize of rs-encoded post-compression DCRV:  158333
-Update sent to  M4
+Number of monitors: 4
+Number of data shares (k): 2
+Number of parity shares (m): 2
+length of DCRV post-compression: 475010
+datasize of RS-encoded post-compression DCRV: 237505
 Update sent to  M1
 Update sent to  M2
 Update sent to  M3
+Update sent to  M4

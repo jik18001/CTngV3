@@ -159,33 +159,40 @@ func (ca *CA) GenerateSRHEEA(crvbytes []byte, dcrvbytes []byte, rootHash []byte)
 	return srh
 }
 
-// output the dcrv just for testing
 func (ca *CA) GenerateUpdateEEA() []byte {
-	//Load CA related Settings
-	//slightly adjust the size so that RS encoding can work properly
-	// final_size = totalbits/8 + 8 needs to be divisible by ca.NumMonitors-ca.mal
-
 	totalBits := ca.Settings.CRV_size
 	density := ca.Settings.Revocation_ratio
 	mode := ca.Settings.Distribution_Mode
-	// Initialize Reed-Solomon encoder
-	fmt.Println("Number of monitors: ", ca.NumMonitors, " Number of data shares: ", ca.NumMonitors-ca.Mal, " Number of parity shares: ", ca.Mal)
-	enc, err := rs.New(ca.NumMonitors-ca.Mal, ca.Mal)
+
+	// Instead of "ca.NumMonitors - ca.Mal" for data, define:
+	// k = Mal+1, m = NumMonitors - k
+	k := ca.Mal + 1         // CHANGED: data shards
+	m := ca.NumMonitors - k // CHANGED: parity shards
+	fmt.Println("Number of monitors:", ca.NumMonitors)
+	fmt.Println("Number of data shares (k):", k)
+	fmt.Println("Number of parity shares (m):", m)
+
+	// Initialize Reed-Solomon with (k, m)
+	enc, err := rs.New(k, m) // CHANGED: use (k, m)
 	if err != nil {
 		log.Fatalf("Error initializing Reed-Solomon encoder: %v", err)
 	}
 
 	// Generate a random compressed DCRV
 	dcrv := GenerateRandomCompressedDCRV(totalBits, density)
-	// Divide the DCRV into equal parts for each monitor
-	dataSize := len(dcrv) / (ca.NumMonitors - ca.Mal)
-	fmt.Println("length of DCRV post-compression", len(dcrv))
-	fmt.Println("datasize of rs-encoded post-compression DCRV: ", dataSize)
-	if len(dcrv)%dataSize != 0 {
-		dataSize++ // Adjust dataSize to ensure all data is covered
+
+	// We'll split dcrv among the k data shards. Each shard has dataSize = len(dcrv)/k (plus padding if needed).
+	dataSize := len(dcrv) / k // CHANGED
+	if dataSize == 0 {
+		dataSize = 1 // handle edge case if dcrv is very small
 	}
-	data := make([][]byte, ca.NumMonitors)
-	for i := range data[:ca.NumMonitors-ca.Mal] {
+	fmt.Println("length of DCRV post-compression:", len(dcrv))
+	fmt.Println("datasize of RS-encoded post-compression DCRV:", dataSize)
+
+	// Create 'NumMonitors' slices total, because we eventually produce k+m shards
+	data := make([][]byte, ca.NumMonitors) // CHANGED
+	// Fill the first k slices with actual data from dcrv
+	for i := 0; i < k; i++ {
 		start := i * dataSize
 		end := start + dataSize
 		if end > len(dcrv) {
@@ -194,7 +201,7 @@ func (ca *CA) GenerateUpdateEEA() []byte {
 		data[i] = dcrv[start:end]
 	}
 
-	// Padding for data alignment with number of monitors
+	// Pad each slice to dataSize if needed
 	for i := range data {
 		if len(data[i]) < dataSize {
 			padded := make([]byte, dataSize)
@@ -203,43 +210,46 @@ func (ca *CA) GenerateUpdateEEA() []byte {
 		}
 	}
 
-	// Encode the data if the mode is Reedsolomn
+	// If EEA is used, do the RS encoding
 	if mode == def.EEA {
-		err := enc.Encode(data)
+		err := enc.Encode(data) // data[0..k-1] = data shards, data[k..k+m-1] = parity
 		def.HandleError(err, "RS Encoding error")
-		// Create a slice to hold the encoded data for each monitor
+
+		// Create a slice to hold the data blocks for Merkle generation
 		var RSdataBlocks []merkletree.DataBlock
 		for i := range data {
 			RSdataBlocks = append(RSdataBlocks, &def.LeafBlock{Content: data[i]})
 		}
 
-		// Generate the second Merkle Tree
+		// Generate Merkle Tree of all k+m shards
 		RStree, err := def.GenerateMerkleTree(RSdataBlocks)
 		def.HandleError(err, "RS Merkle Tree Generation")
 		rootHashRS := def.GenerateRootHash(RStree)
+
+		// SRHEEA creation
 		SRHEEA := ca.GenerateSRHEEA(dcrv, dcrv, rootHashRS)
-		//sthRS := ca.GenerateSTH(rootHashRS, totalBits)
 		originalLen := len(dcrv)
+
+		// Assign each shard to the corresponding monitor
 		for id, update := range ca.Updates_EEA {
 			index := def.GetIndex(id)
-			//fmt.Println(index, idString)
 			update.SRH = *SRHEEA
 			update.FileShare = data[index]
 			poi, _ := def.GeneratePOI(RStree, RSdataBlocks, index)
 			update.Head_rs = rootHashRS
 			update.PoI = poi
-			update.OriginalLen = originalLen // Set the original length here
-			ca.Updates_EEA[id] = update      // Store the modified update back
+			update.OriginalLen = originalLen
+			ca.Updates_EEA[id] = update
 		}
 		return dcrv
 	}
-	// only simulating one period
+
+	// If not in EEA mode, we do not use Reed-Solomon
 	SRH := ca.GenerateSRH(dcrv, dcrv)
 	for _, update := range ca.Updates {
 		update.SRH = *SRH
-		update.File = update.File
+		// update.File = update.File // not changed
 	}
-
 	return dcrv
 }
 

@@ -216,9 +216,9 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 	}
 	fsmlogger.AddDataFragment(monitorindex, update.FileShare)
 	counter := fsmlogger.GetDataFragmentCounter()
-	if counter == m.Settings.Num_Monitors-m.Settings.Mal {
-
-		dec, err := rs.New(counter, m.Settings.Mal)
+	required := m.Settings.Mal + 1 // only Mal+1 shards needed
+	if counter == required {
+		dec, err := rs.New(required, m.Settings.Num_Monitors-required)
 		if err != nil {
 			log.Fatalf("Error initializing Reed-Solomon decoder: %v", err)
 		}

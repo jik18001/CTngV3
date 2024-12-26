@@ -3,16 +3,16 @@
     "monitor_id": "M2",
     "entity_id": "L1",
     "entity_type": "Logger",
-    "converge_time": 47.375629311,
-    "traffic": "135.64 MB",
-    "update_count": 4
+    "converge_time": 49.128414789,
+    "traffic": "152.59 MB",
+    "update_count": 3
   },
   {
     "monitor_id": "M2",
     "entity_id": "C1",
     "entity_type": "CA",
-    "converge_time": 32.699261844,
-    "traffic": "827.88 KB",
+    "converge_time": 33.063453522,
+    "traffic": "1.21 MB",
     "update_count": 4
   }
 ]

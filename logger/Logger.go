@@ -7,6 +7,8 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	def "github.com/jik18001/CTngV3/def"
@@ -128,46 +130,47 @@ func (l *Logger) GenerateSTH(rootHash []byte, size int) *def.STH {
 }
 
 func (l *Logger) GenerateUpdate() {
-	filesize := adjustFileSize(l.NumMonitors-l.Mal, l.Settings.Certificate_size, l.Settings.Certificate_size*l.Settings.Certificate_per_logger)
-	numcerts := l.Settings.Certificate_per_logger
-	// Initialize Reed-Solomon encoder
-	enc, err := rs.New(l.NumMonitors-l.Mal, l.Mal)
+	// Instead of: enc, err := rs.New(l.NumMonitors - l.Mal, l.Mal)
+	// We'll define k=Mal+1, and m=NumMonitors-k
+	k := l.Mal + 1         // Number of data shards
+	m := l.NumMonitors - k // Number of parity shards
+	enc, err := rs.New(k, m)
 	if err != nil {
 		log.Fatalf("Error initializing Reed-Solomon encoder: %v", err)
 	}
-	// Create a slice to hold the data for each monitor
-	/*
-		data := make([][]byte, l.NumMonitors)
-		for i := range data {
-			data[i] = make([]byte, filesize/(l.NumMonitors-l.Mal))
-		}
-		// file the data portion
-		for i, in := range data[:(l.NumMonitors - l.Mal)] {
-			for j := range in {
-				in[j] = byte((i + j) & 0xff)
-			}
-		}*/
 
+	// We'll compute the total file size as before
+	filesize := adjustFileSize(k, l.Settings.Certificate_size,
+		l.Settings.Certificate_size*l.Settings.Certificate_per_logger)
+
+	// Decide how many blocks total to allocate
+	// We still want to produce 'n = NumMonitors' slices in EEA mode
+	// because we eventually want each of the n monitors to get one block.
 	numBlocks := l.NumMonitors
 	if l.Settings.Distribution_Mode != def.EEA {
-		numBlocks = l.NumMonitors - l.Mal // Only allocate data blocks if EEA mode is off
+		// If NOT in EEA mode, we might only allocate k blocks
+		numBlocks = k
 	}
 
-	// Allocate data slices accordingly
+	// Allocate 'data' slices. Each block is filesize/k bytes.
 	data := make([][]byte, numBlocks)
 	for i := range data {
-		data[i] = make([]byte, filesize/(l.NumMonitors-l.Mal))
+		// For data shards, we divide by k (not by NumMonitors - Mal).
+		data[i] = make([]byte, filesize/k)
 	}
 
-	// Fill the data portion
-	for i, in := range data[:(l.NumMonitors - l.Mal)] {
+	// Fill the first k blocks with some dummy data for the example:
+	// (In practice, this is where you'd write your actual certificate bytes.)
+	for i, in := range data[:k] {
 		for j := range in {
 			in[j] = byte((i + j) & 0xff)
 		}
 	}
-	// Split the data into blocks and compute the Merkle Tree
+
+	// Now build a Merkle tree of the actual data blocks (only the first k).
 	var dataBlocks []merkletree.DataBlock
-	for i := range data[:(l.NumMonitors - l.Mal)] {
+	for i := 0; i < k; i++ {
+		// chunk them by l.Settings.Certificate_size
 		for j := 0; j < len(data[i]); j += l.Settings.Certificate_size {
 			end := j + l.Settings.Certificate_size
 			if end > len(data[i]) {
@@ -176,103 +179,57 @@ func (l *Logger) GenerateUpdate() {
 			dataBlocks = append(dataBlocks, &def.LeafBlock{Content: data[i][j:end]})
 		}
 	}
-	// Generate Merkle Tree
+
+	// Generate the "certificate" Merkle Tree, rootHash, and STH as normal
 	tree, err := def.GenerateMerkleTree(dataBlocks)
 	def.HandleError(err, "MT Generation")
 	rootHash := def.GenerateRootHash(tree)
-	var sth *def.STH
-	sth = l.GenerateSTH(rootHash, numcerts)
-	//fmt.Println(sth)
-	// Encode the data if the mode is Reedsolomn
+	sth := l.GenerateSTH(rootHash, l.Settings.Certificate_per_logger)
+
+	// If we're in erasure-encoding mode (EEA), do the encoding
 	if l.Settings.Distribution_Mode == def.EEA {
+		// Encode the data: data[:k] are data shards, data[k:] are parity
 		err := enc.Encode(data)
 		def.HandleError(err, "RS Encoding error")
-		// Create a slice to hold the encoded data for each monitor
+
+		// Build a second Merkle tree of the entire data[] (k+m = NumMonitors blocks)
 		var RSdataBlocks []merkletree.DataBlock
 		for i := range data {
 			RSdataBlocks = append(RSdataBlocks, &def.LeafBlock{Content: data[i]})
 		}
 
-		// Generate the second Merkle Tree
 		RStree, err := def.GenerateMerkleTree(RSdataBlocks)
 		def.HandleError(err, "Second Merkle Tree Generation")
 		rootHashRS := def.GenerateRootHash(RStree)
+
+		// Combine the two root hashes into yet another small Merkle tree
 		var rootblocks []merkletree.DataBlock
 		rootblocks = append(rootblocks, &def.LeafBlock{Content: rootHashRS})
 		rootblocks = append(rootblocks, &def.LeafBlock{Content: rootHash})
 		newtree, err := def.GenerateMerkleTree(rootblocks)
+		def.HandleError(err, "Third Merkle Tree Generation")
 		combinedroot := def.GenerateRootHash(newtree)
-		newSTH := l.GenerateSTH(combinedroot, numcerts)
-		//sthRS := l.GenerateSTH(rootHashRS, numcerts)
+		newSTH := l.GenerateSTH(combinedroot, l.Settings.Certificate_per_logger)
+
+		// Assign each monitor’s share and PoI
 		for id, update := range l.Updates_EEA {
-			index := def.GetIndex(id)
-			//fmt.Println(index, idString)
+			index := def.GetIndex(id) // e.g. M1 => index=0, M2 => 1, etc.
 			update.STH = *newSTH
-			update.FileShare = data[index]
+			update.FileShare = data[index] // The shard for that monitor
 			poi, _ := def.GeneratePOI(newtree, RSdataBlocks, index)
 			update.Head_rs = rootHashRS
 			update.Head_cert = rootHash
-			//update.STH_rs = *sthRS
 			update.PoI = poi
 		}
 		return
 	}
 
-	// Now assign the combined data slice to l.Update.File
+	// Else (not EEA), just store the raw data in l.Update
 	l.Update = &def.Update_Logger{
 		STH:  *sth,
 		File: data,
 	}
-	//l.Update.STH = *sth
-	//l.Update.File = data
-
 }
-
-/*
-func (l *Logger) Send_Update_EEA() {
-	monitors := def.GetMonitorURL(*l.Settings)
-	for id, monitor := range monitors {
-		url := "http://" + monitor + "/monitor/logger_update_EEA"
-		update := l.Updates_EEA[id]
-		update_json, err := json.Marshal(update)
-		if err != nil {
-			log.Fatalf("Failed to marshal update: %v", err)
-		}
-		_, err = l.Client.Post(url, "application/json", bytes.NewBuffer(update_json))
-		if err != nil {
-			fmt.Println("Failed to send update to: ", update.MonitorID)
-			fmt.Println(err)
-			//fmt.Println(update.FileShare)
-		} else {
-			fmt.Println("Update sent to ", update.MonitorID)
-			//fmt.Println(update.FileShare)
-		}
-
-	}
-}
-
-func (l *Logger) Send_Update() {
-	monitors := def.GetMonitorURL(*l.Settings)
-	for id, monitor := range monitors {
-		url := "http://" + monitor + "/monitor/logger_update"
-		update := l.Update
-		//fmt.Println(update)
-		update_json, err := json.Marshal(update)
-		if err != nil {
-			log.Fatalf("Failed to marshal update: %v", err)
-		}
-		_, err = l.Client.Post(url, "application/json", bytes.NewBuffer(update_json))
-		if err != nil {
-			fmt.Println("Failed to send update to: ", id)
-			fmt.Println(err)
-			fmt.Println(update.STH)
-		} else {
-			fmt.Println("Update sent to ", id)
-			fmt.Println(update.STH)
-		}
-	}
-}
-*/
 
 func (l *Logger) sendUpdateToMonitor(urlSuffix string, update interface{}, monitorID string) int {
 	url := "http://" + monitorID + urlSuffix
@@ -294,16 +251,55 @@ func (l *Logger) sendUpdateToMonitor(urlSuffix string, update interface{}, monit
 
 func (l *Logger) Send_Update_EEA() {
 	monitors := def.GetMonitorURL(*l.Settings)
-	totalTraffic := 0
 
-	for id, monitor := range monitors {
+	// We'll keep track of total traffic with an atomic counter
+	var totalTraffic int64
+
+	// We use a WaitGroup to wait for all goroutines to finish
+	var wg sync.WaitGroup
+
+	for id, monitorURL := range monitors {
 		update := l.Updates_EEA[id]
-		totalTraffic += l.sendUpdateToMonitor("/monitor/logger_update_EEA", update, monitor)
+
+		// For each monitor, spawn a goroutine
+		wg.Add(1)
+		go func(url string, upd *def.Update_Logger_EEA) {
+			defer wg.Done()
+
+			// Introduce random delay of 10–50 ms
+			delay := time.Duration(rand.Intn(41)+10) * time.Millisecond
+			time.Sleep(delay)
+
+			// Now actually send the update
+			traffic := l.sendUpdateToMonitor("/monitor/logger_update_EEA", upd, url)
+
+			// Accumulate into the totalTraffic
+			atomic.AddInt64(&totalTraffic, int64(traffic))
+
+		}(monitorURL, update)
 	}
 
-	fmt.Printf("Total traffic sent for EEA updates: %d bytes\n", totalTraffic)
+	// Wait until all goroutines have finished
+	wg.Wait()
+
+	// Convert from int64 to int for printing, if desired
+	finalTraffic := atomic.LoadInt64(&totalTraffic)
+	fmt.Printf("Total traffic sent for EEA updates: %d bytes\n", finalTraffic)
 }
 
+/*
+	func (l *Logger) Send_Update_EEA() {
+		monitors := def.GetMonitorURL(*l.Settings)
+		totalTraffic := 0
+
+		for id, monitor := range monitors {
+			update := l.Updates_EEA[id]
+			totalTraffic += l.sendUpdateToMonitor("/monitor/logger_update_EEA", update, monitor)
+		}
+
+		fmt.Printf("Total traffic sent for EEA updates: %d bytes\n", totalTraffic)
+	}
+*/
 func (l *Logger) Send_Update() {
 	monitors := def.GetMonitorURL(*l.Settings)
 	totalTraffic := 0

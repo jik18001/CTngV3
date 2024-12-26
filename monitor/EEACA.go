@@ -191,9 +191,10 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 	// Check if we have enough fragments to reconstruct
 	counter := fsmca.GetDataFragmentCounter()
 	fmt.Println("Number of data fragments collected:", counter)
-	required := m.Settings.Num_Monitors - m.Settings.Mal
+	//required := m.Settings.Num_Monitors - m.Settings.Mal
+	required := m.Settings.Mal + 1
 	if counter == required {
-		dec, err := rs.New(required, m.Settings.Mal)
+		dec, err := rs.New(required, m.Settings.Num_Monitors-required)
 		if err != nil {
 			log.Fatalf("Error initializing Reed-Solomon decoder: %v", err)
 		}
