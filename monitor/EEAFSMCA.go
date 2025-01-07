@@ -20,6 +20,7 @@ type FSMCAEEA struct {
 	DataFragments        [][]byte
 	DataFragment_Counter int
 	DataCheck            bool
+	TimeCheck            bool
 	Signaturelist        []def.SigFragment
 	Signature            def.ThresholdSig
 	APoM                 def.APoM
@@ -109,6 +110,12 @@ func (ca *FSMCAEEA) SetField(field string, value interface{}) error {
 		} else {
 			return errors.New("invalid type for DataCheck")
 		}
+	case "TimeCheck":
+		if v, ok := value.(bool); ok {
+			ca.TimeCheck = v
+		} else {
+			return errors.New("invalid type for TimeCheck")
+		}
 	case "Period":
 		if v, ok := value.(int); ok {
 			ca.Period = v
@@ -151,6 +158,8 @@ func (ca *FSMCAEEA) GetField(field string) (interface{}, error) {
 		return ca.APoM, nil
 	case "DataCheck":
 		return ca.DataCheck, nil
+	case "TimeCheck":
+		return ca.TimeCheck, nil
 	case "TrafficCount":
 		return ca.TrafficCount, nil
 	case "UpdateCount":

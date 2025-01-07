@@ -256,6 +256,14 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 		if isRootHashValid {
 			fsmlogger.SetField("DataCheck", true)
 		}
+		value, _ := fsmlogger.GetField("TimeCheck")
+		noconf, _ := value.(bool)
+		if noconf {
+			NewContext := def.Context{
+				Label: def.WAKE_TM,
+			}
+			LSMWakeup(m, fsmlogger, NewContext)
+		}
 		//value, _ := fsmlogger.GetField("DataCheck")
 		//dataCheckValue, _ := value.(bool)
 		//fmt.Println(dataCheckValue)
@@ -295,7 +303,7 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 		}
 		go func() {
 			time.AfterFunc(time.Duration(m.Settings.Verification_Wait_time)*time.Second, func() {
-
+				fsmlogger.SetField("TimeCheck", true)
 				value, _ := fsmlogger.GetField("DataCheck")
 				dataCheckValue, _ := value.(bool)
 				//fmt.Println(dataCheckValue)

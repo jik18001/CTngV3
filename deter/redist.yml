@@ -1,0 +1,11 @@
+---
+- name: Redistribute detersettings.json to all hosts
+  hosts: all  # Target all hosts
+  tasks:
+    - name: Copy detersettings.json to remote hosts
+      copy:
+        src: /tmp/CTngV3/def/detersettings.json  # Path to the source file on the control machine
+        dest: /tmp/CTngV3/def/detersettings.json  # Destination path on the remote hosts
+        owner: jik18001  # Optional: Specify file ownership
+        group: jik18001  # Optional: Specify group ownership
+        mode: '0644'  # Optional: Set permissions

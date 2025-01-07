@@ -22,16 +22,17 @@ type FSMLoggerEEA struct {
 	DataFragment_Counter int                                  // Count of Data Fragments
 	Data                 [][]byte                             // The entire certificate file
 	DataCheck            bool                                 // Compare against the head_cert
-	Signaturelist        []def.SigFragment                    // Precommit and Post Commit State, sign over the STH
-	Signature            def.ThresholdSig                     // Done state (Serialized signature)
-	APoM                 def.APoM                             // APoM record against this Logger, if any
-	CPoM                 def.CPoM                             // CPoM record against this Logger, if any
-	TrafficCount         int                                  // Count of traffic
-	UpdateCount          int                                  // Count of updates received
-	StartTime            time.Time                            // Time when the FSMLoggerEEA was started
-	ConvergeTime         time.Duration                        // Time it takes to generate Threshold Signature
-	Bmode                string                               // Only used in the base version (Non-EEA)
-	Notifications        []def.Notification                   // Only used in the base version (Non-EEA)
+	TimeCheck            bool
+	Signaturelist        []def.SigFragment  // Precommit and Post Commit State, sign over the STH
+	Signature            def.ThresholdSig   // Done state (Serialized signature)
+	APoM                 def.APoM           // APoM record against this Logger, if any
+	CPoM                 def.CPoM           // CPoM record against this Logger, if any
+	TrafficCount         int                // Count of traffic
+	UpdateCount          int                // Count of updates received
+	StartTime            time.Time          // Time when the FSMLoggerEEA was started
+	ConvergeTime         time.Duration      // Time it takes to generate Threshold Signature
+	Bmode                string             // Only used in the base version (Non-EEA)
+	Notifications        []def.Notification // Only used in the base version (Non-EEA)
 
 }
 
@@ -96,6 +97,13 @@ func (l *FSMLoggerEEA) SetField(field string, value interface{}) error {
 		} else {
 			return errors.New("invalid type for DataCheck")
 		}
+	case "TimeCheck":
+		if v, ok := value.(bool); ok {
+			l.TimeCheck = v
+		} else {
+			return errors.New("invalid type for TimeCheck")
+		}
+
 	case "Convergetime":
 		if v, ok := value.(time.Duration); ok {
 			l.ConvergeTime = v
@@ -132,6 +140,8 @@ func (l *FSMLoggerEEA) GetField(field string) (interface{}, error) {
 		return l.APoM, nil
 	case "DataCheck":
 		return l.DataCheck, nil
+	case "TimeCheck":
+		return l.TimeCheck, nil
 	case "TrafficCount":
 		return l.TrafficCount, nil
 	case "UpdateCount":

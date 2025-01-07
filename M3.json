@@ -3,15 +3,15 @@
     "monitor_id": "M3",
     "entity_id": "L1",
     "entity_type": "Logger",
-    "converge_time": 49.10770111,
-    "traffic": "101.73 MB",
-    "update_count": 2
+    "converge_time": 16.853833588,
+    "traffic": "30.52 MB",
+    "update_count": 3
   },
   {
     "monitor_id": "M3",
     "entity_id": "C1",
     "entity_type": "CA",
-    "converge_time": 33.045135882,
+    "converge_time": 12.754986192,
     "traffic": "1.21 MB",
     "update_count": 4
   }

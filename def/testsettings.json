@@ -20,7 +20,7 @@
   "Update_Wait_time": 5,
   "Mature_Wait_time": 0,
   "Response_Wait_time ": 6,
-  "Verification_Wait_time": 30,
+  "Verification_Wait_time": 10,
   "MUD": 60,
   "Distribution_Mode": "erasure encoding algorithm",
   "Broadcasting_Mode": "minimal bandwidth consumption",
@@ -29,5 +29,5 @@
   "Revocation_ratio": 0.002,
   "Num_Loggers": 1,
   "Certificate_size": 2000,
-  "Certificate_per_logger": 40000
+  "Certificate_per_logger": 8000
 }

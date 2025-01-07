@@ -92,6 +92,7 @@ func check_and_send_valid_sth(m *MonitorEEA, fsmlogger *FSMLoggerEEA, sth def.ST
 	// Run this in a new goroutine
 	go func() {
 		time.AfterFunc(time.Duration(m.Settings.Verification_Wait_time)*time.Second, func() {
+			fsmlogger.SetField("TimeCheck", true)
 			value, _ := fsmlogger.GetField("DataCheck")
 			dataCheckValue, _ := value.(bool)
 			fmt.Println(m.Settings.Verification_Wait_time, dataCheckValue)
@@ -186,6 +187,15 @@ func check_and_send_notifcation(m *MonitorEEA, fsmlogger *FSMLoggerEEA, update d
 	}
 	fsmlogger.SetField("Data", update.File)
 	fsmlogger.SetField("DataCheck", true)
+	value, _ := fsmlogger.GetField("TimeCheck")
+	noconf, _ := value.(bool)
+	if noconf {
+		NewContext := def.Context{
+			Label: def.WAKE_TM,
+		}
+		LSMWakeup(m, fsmlogger, NewContext)
+	}
+
 	new_note := def.Notification{
 		Type:       def.TUEEA,
 		Originator: def.CTngID(update.STH.LID),

@@ -230,8 +230,15 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 			// If verification passes
 			fsmca.SetField("DataCheck", true)
 			fmt.Println("Data reconstruction and verification succeeded. DataCheck set to true.")
+			value, _ := fsmca.GetField("TimeCheck")
+			noconf, _ := value.(bool)
+			if noconf {
+				NewContext := def.Context{
+					Label: def.WAKE_TM,
+				}
+				CSMWakeup(m, fsmca, NewContext)
+			}
 		}
-
 	}
 
 	// Send a notification after handling the update
@@ -263,6 +270,7 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 		}
 		go func() {
 			time.AfterFunc(time.Duration(m.Settings.Mature_Wait_time+m.Settings.Verification_Wait_time)*time.Second, func() {
+				fsmca.SetField("TimeCheck", true)
 				value, _ := fsmca.GetField("DataCheck")
 				dataCheckValue, _ := value.(bool)
 				if dataCheckValue {

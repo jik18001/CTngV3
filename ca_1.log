@@ -4,8 +4,8 @@ C1
 Number of monitors: 4
 Number of data shares (k): 2
 Number of parity shares (m): 2
-length of DCRV post-compression: 475010
-datasize of RS-encoded post-compression DCRV: 237505
+length of DCRV post-compression: 474629
+datasize of RS-encoded post-compression DCRV: 237314
 Update sent to  M1
 Update sent to  M2
 Update sent to  M3
