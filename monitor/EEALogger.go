@@ -292,7 +292,7 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 		//fmt.Println(sth)
 		fsmlogger.SetField("STH", sth)
 		fsmlogger.SetField("State", def.PRECOMMIT)
-		fmt.Println("Transitioned to: ", fsmlogger.State)
+		//fmt.Println("Transitioned to: ", fsmlogger.State)
 		sth_json, err := json.Marshal(sth)
 		if err != nil {
 			log.Fatalf("Failed to marshal update: %v", err)
