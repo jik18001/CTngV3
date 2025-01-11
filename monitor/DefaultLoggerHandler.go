@@ -75,7 +75,7 @@ func check_and_send_valid_sth(m *MonitorEEA, fsmlogger *FSMLoggerEEA, sth def.ST
 	}
 	fsmlogger.SetField("State", def.PRECOMMIT)
 	fsmlogger.SetField("STH", sth)
-	fmt.Println("Transitioned to: ", fsmlogger.State)
+	//fmt.Println("Transitioned to: ", fsmlogger.State)
 
 	STH_only_update := def.Update_Logger{
 		STH:  sth,

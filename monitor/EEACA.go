@@ -258,7 +258,7 @@ func process_ca_update_EEA(m *MonitorEEA, srh def.SRH, update def.Update_CA_EEA)
 	if reflect.DeepEqual(srh2, def.SRH{}) {
 		fsmca.SetField("SRH", srh)
 		fsmca.SetField("State", def.PRECOMMIT)
-		fmt.Println("Transitioned to:", fsmca.State)
+		//fmt.Println("Transitioned to:", fsmca.State)
 		srh_json, err := json.Marshal(srh)
 		if err != nil {
 			log.Fatalf("Failed to marshal update: %v", err)
