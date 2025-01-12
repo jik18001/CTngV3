@@ -78,7 +78,7 @@
   "Response_Wait_time ": 6,
   "Verification_Wait_time": 10,
   "MUD": 90,
-  "Distribution_Mode": "erasure encoding algorithm",
+  "Distribution_Mode": "default",
   "Broadcasting_Mode": "minimal bandwidth consumption",
   "Num_CAs": 1,
   "CRV_size": 100000000,

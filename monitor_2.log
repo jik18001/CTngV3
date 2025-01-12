@@ -1,83 +1,17 @@
 Configuration Loaded: 1 CA(s), 1 Logger(s), 4 Monitor(s)
 M2
-erasure encoding algorithm
-Starting EEA Server
+default
+Starting Default Server
 Converge times successfully dumped to M2.json
-Current Time: 2025-01-06T19:07:10-05:00
-[34mListening on port: 8003 [0m
-Notification received, originally assigned to:  M1  with CAID =  C1
-CA index mapped from CAID = 0 datafragmentindex mapped from MID =  0 with Bmode:  minimal bandwidth consumption
-CA index mapped from CAID = 0 datafragmentindex mapped from MID =  0 with Bmode:  minimal bandwidth consumption
-request sent, TR started
-Processing update from CA ID (CAID): C1, Monitor ID (MID): M1
-Update received, originally assigned to:  M1
-Number of data fragments collected: 1
-Notification received, originally assigned to:  M1  with CAID =  C1
-request received
-Notification received, originally assigned to:  M1  with CAID =  C1
-Notification received, originally assigned to:  M1  with CAID =  C1
-Transitioned to: precommit
-Processing update from CA ID (CAID): C1, Monitor ID (MID): M2
-Update received, originally assigned to:  M2
-Number of data fragments collected: 2
-Data reconstruction and verification succeeded. DataCheck set to true.
-request received
-Notification received, originally assigned to:  M2  with CAID =  C1
-Notification received, originally assigned to:  M2  with CAID =  C1
-Notification received, originally assigned to:  M2  with CAID =  C1
-Notification received, originally assigned to:  M2  with CAID =  C1
-Notification received, originally assigned to:  M3  with CAID =  C1
-CA index mapped from CAID = 0 datafragmentindex mapped from MID =  2 with Bmode:  minimal bandwidth consumption
-CA index mapped from CAID = 0 datafragmentindex mapped from MID =  2 with Bmode:  minimal bandwidth consumption
-request sent, TR started
-Processing update from CA ID (CAID): C1, Monitor ID (MID): M3
-Update received, originally assigned to:  M3
-Number of data fragments collected: 3
-request received
-Notification received, originally assigned to:  M3  with CAID =  C1
-Notification received, originally assigned to:  M3  with CAID =  C1
-Notification received, originally assigned to:  M3  with CAID =  C1
-Notification received, originally assigned to:  M4  with CAID =  C1
-CA index mapped from CAID = 0 datafragmentindex mapped from MID =  3 with Bmode:  minimal bandwidth consumption
-CA index mapped from CAID = 0 datafragmentindex mapped from MID =  3 with Bmode:  minimal bandwidth consumption
-request sent, TR started
-Processing update from CA ID (CAID): C1, Monitor ID (MID): M4
-Update received, originally assigned to:  M4
-Number of data fragments collected: 4
-Notification received, originally assigned to:  M4  with CAID =  C1
-request received
-Notification received, originally assigned to:  M4  with CAID =  C1
-Notification received, originally assigned to:  M4  with CAID =  C1
-Processing update from Logger ID (LID): L1, Monitor ID (MID): M2
-Received data size: 10667459 bytes
-Updated TrafficCount: 10667459, UpdateCount: 1
-M2
-Processing update from Logger ID (LID): L1, Monitor ID (MID): M1
-Received data size: 10667459 bytes
-Updated TrafficCount: 21334918, UpdateCount: 2
-M1
-8000000
-8000000
-8000000
-8000000
-Transitioned to:  precommit
-Transitioned to:  precommit
-WAKE_TR event triggered.
-WAKE_TR event triggered.
-WAKE_TR event triggered.
+Current Time: 2025-01-11T21:17:34-05:00
+[34m(default) Listening on port: 8003 [0m
+New Update received with size 21333860
 number of partial Signatures:  1
 number of partial Signatures:  2
-Time elapsed since start: 12.882541747s
+10 true
 WAKE_TM event triggered.
-revocation_partial_signature broadcasted
-WAKE_TM event triggered.
-TBS:  {L1 1 8000 2025-01-07T00:07:13Z [113 148 16 178 202 74 170 145 13 4 56 132 224 204 200 88 38 141 7 221 159 74 187 183 245 186 234 226 26 242 82 99] {"sig":"","id":""}}
-number of partial Signatures:  1
-number of partial Signatures:  2
-Time elapsed since start: 16.979859224s
-transparency_partial_signature broadcasted
-WAKE_TM event triggered.
-TBS:  {L1 1 8000 2025-01-07T00:07:13Z [113 148 16 178 202 74 170 145 13 4 56 132 224 204 200 88 38 141 7 221 159 74 187 183 245 186 234 226 26 242 82 99] {"sig":"","id":""}}
+Time elapsed since start: 15.573174607s
+TBS:  {L1 1 8000 2025-01-12T02:17:37Z [198 31 166 128 66 206 20 62 123 135 3 181 16 213 93 82 131 196 66 163 125 161 17 228 242 27 138 18 19 47 131 215] {"sig":"","id":""}}
 transparency_partial_signature broadcasted
 Converge times successfully dumped to M2.json
 Terminating the program after 1 minute.

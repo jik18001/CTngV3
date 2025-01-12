@@ -23,6 +23,12 @@ func handleRequests(m *MonitorEEA) {
 	gorillaRouter.HandleFunc("/monitor/default_transparency_request", bindContext(m, default_transparency_request_handler)).Methods("POST")
 	gorillaRouter.HandleFunc("/monitor/default_transparency_partial_signature", bindContext(m, default_transparency_partial_signature_handler)).Methods("POST")
 	//---------------------------------Revocation Updates----------------------------------------------------------
+	// Use the EEA version for the CA regardless since we did not implement the base version
+	//gorillaRouter.HandleFunc("/monitor/ca_update_EEA", bindContext(m, ca_update_EEA_handler)).Methods("POST")
+	//gorillaRouter.HandleFunc("/monitor/SRH", bindContext(m, ca_srh_handler)).Methods("POST")
+	//gorillaRouter.HandleFunc("/monitor/revocation_notification", bindContext(m, revocation_notification_handler)).Methods("POST")
+	//gorillaRouter.HandleFunc("/monitor/revocation_request", bindContext(m, revocation_request_handler)).Methods("POST")
+	//gorillaRouter.HandleFunc("/monitor/revocation_partial_signature", bindContext(m, revocation_partial_signature_handler)).Methods("POST")
 	// gorillaRouter.HandleFunc("/monitor/ca_update_EEA", bindContext(m, ca_update_EEA_handler)).Methods("POST")
 	// gorillaRouter.HandleFunc("/monitor/SRH", bindContext(m, ca_srh_handler)).Methods("POST")
 	// gorillaRouter.HandleFunc("/monitor/revocation_notification", bindContext(m, revocation_notification_handler)).Methods("POST")

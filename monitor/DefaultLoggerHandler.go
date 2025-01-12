@@ -168,7 +168,7 @@ func check_and_send_notifcation(m *MonitorEEA, fsmlogger *FSMLoggerEEA, update d
 	//PoI verification
 	data := update.File
 	var dataBlocks []merkletree.DataBlock
-	for i := range data[:(m.Settings.Num_Monitors - m.Settings.Mal)] {
+	for i := range data[:(m.Settings.Mal + 1)] {
 		for j := 0; j < len(data[i]); j += m.Settings.Certificate_size {
 			end := j + m.Settings.Certificate_size
 			if end > len(data[i]) {
@@ -193,7 +193,7 @@ func check_and_send_notifcation(m *MonitorEEA, fsmlogger *FSMLoggerEEA, update d
 		NewContext := def.Context{
 			Label: def.WAKE_TM,
 		}
-		LSMWakeup(m, fsmlogger, NewContext)
+		defaultLSMWakeup(m, fsmlogger, NewContext)
 	}
 
 	new_note := def.Notification{
@@ -376,7 +376,7 @@ func default_transparency_notification_handler(m *MonitorEEA, w http.ResponseWri
 				Content: new_note,
 			}
 			time.AfterFunc(time.Duration(m.Settings.Response_Wait_time)*time.Second, func() {
-				LSMWakeup(m, fsmlogger, NewContext)
+				defaultLSMWakeup(m, fsmlogger, NewContext)
 
 				//monitorindex, _ := def.MapIDtoInt(def.CTngID(new_note.Monitor))
 				//_, err := fsmlogger.GetDataFragment(monitorindex)
