@@ -25,8 +25,8 @@ func main() {
 	var cryptofile = "def/testconfig.json"
 	var settingfile = "def/testsettings.json"
 	if os.Args[3] == "deter" {
-		cryptofile = "def/deterconfig.json"
-		settingfile = "def/detersettings.json"
+		cryptofile = "deter/deterconfig.json"
+		settingfile = "deter/detersettings.json"
 	}
 
 	// Initialize a new Setting object.
