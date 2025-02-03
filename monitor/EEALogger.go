@@ -410,12 +410,12 @@ func logger_update_EEA_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Req
 	// fmt.Printf("Received data size: %d bytes\n", byteCounter)
 	// fmt.Printf("Updated TrafficCount: %d, UpdateCount: %d\n", newcount, newucount)
 
-	if update.File != nil && len(update.File) > 0 {
-		fsmlogger.lock.Lock()
-		fsmlogger.TrafficCount = fsmlogger.TrafficCount + int(byteCounter)
-		fsmlogger.UpdateCount = fsmlogger.UpdateCount + 1
-		fsmlogger.lock.Unlock()
-	}
+	//if update.File != nil && len(update.File) > 0 {
+	fsmlogger.lock.Lock()
+	fsmlogger.TrafficCount = fsmlogger.TrafficCount + int(byteCounter)
+	fsmlogger.UpdateCount = fsmlogger.UpdateCount + 1
+	fsmlogger.lock.Unlock()
+	//}
 
 	// Process the logger update
 	process_logger_update_EEA(m, update.STH, update)
