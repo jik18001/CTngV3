@@ -1,7 +1,9 @@
 {
   "Ipmap": {
     "C1": "127.0.0.10",
+    "C2": "127.0.0.11",
     "L1": "127.0.1.20",
+    "L2": "127.0.1.21",
     "M1": "127.0.2.30",
     "M2": "127.0.2.31",
     "M3": "127.0.2.32",
@@ -9,25 +11,27 @@
   },
   "Portmap": {
     "C1": "8000",
-    "L1": "8001",
-    "M1": "8002",
-    "M2": "8003",
-    "M3": "8004",
-    "M4": "8005"
+    "C2": "8001",
+    "L1": "8002",
+    "L2": "8003",
+    "M1": "8004",
+    "M2": "8005",
+    "M3": "8006",
+    "M4": "8007"
   },
   "Num_Monitors": 4,
-  "Mal": 1,
+  "Mal": 2,
   "Update_Wait_time": 5,
   "Mature_Wait_time": 0,
   "Response_Wait_time ": 6,
   "Verification_Wait_time": 10,
-  "MUD": 60,
+  "MUD": 30,
   "Distribution_Mode": "default",
-  "Broadcasting_Mode": "minimal bandwidth consumption",
-  "Num_CAs": 1,
+  "Broadcasting_Mode": "minimal wait time",
+  "Num_CAs": 2,
   "CRV_size": 100000000,
   "Revocation_ratio": 0.002,
-  "Num_Loggers": 1,
+  "Num_Loggers": 2,
   "Certificate_size": 2000,
-  "Certificate_per_logger": 8000
+  "Certificate_per_logger": 5000
 }

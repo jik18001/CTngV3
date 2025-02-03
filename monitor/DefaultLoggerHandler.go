@@ -250,22 +250,11 @@ func logger_update_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Request
 	index, _ := def.MapIDtoInt(def.CTngID(update.STH.LID))
 	fsmlogger := m.FSMLoggerEEAs[index]
 
-	// Retrieve the current traffic count and ensure type assertion
-	trafficcountInterface, _ := fsmlogger.GetField("TrafficCount")
-	trafficcount := trafficcountInterface.(int) // Assert as int
-
-	// Update the traffic count by adding the size of the request body
-	newcount := trafficcount + int(byteCounter)
-	fsmlogger.SetField("TrafficCount", newcount)
-
-	// Retrieve the current traffic count and ensure type assertion
 	if update.File != nil && len(update.File) > 0 {
-		fmt.Println("New Update received with size", byteCounter)
-		updatecountInterface, _ := fsmlogger.GetField("UpdateCount")
-		updatecount := updatecountInterface.(int) // Assert as int
-		// Update the traffic count by adding the size of the request body
-		newucount := updatecount + 1
-		fsmlogger.SetField("UpdateCount", newucount)
+		fsmlogger.lock.Lock()
+		fsmlogger.TrafficCount = fsmlogger.TrafficCount + int(byteCounter)
+		fsmlogger.UpdateCount = fsmlogger.UpdateCount + 1
+		fsmlogger.lock.Unlock()
 	}
 
 	// Process the logger update

@@ -391,24 +391,31 @@ func logger_update_EEA_handler(m *MonitorEEA, w http.ResponseWriter, r *http.Req
 	fmt.Printf("Processing update from Logger ID (LID): %s, Monitor ID (MID): %s\n", update.STH.LID, update.MonitorID)
 
 	// Retrieve the current traffic count
-	trafficcountInterface, _ := fsmlogger.GetField("TrafficCount")
-	trafficcount := trafficcountInterface.(int) // Assert as int
+	//trafficcountInterface, _ := fsmlogger.GetField("TrafficCount")
+	//trafficcount := trafficcountInterface.(int) // Assert as int
 
 	// Update the traffic count by adding the size of the request body
-	newcount := trafficcount + int(byteCounter)
-	fsmlogger.SetField("TrafficCount", newcount)
+	//newcount := trafficcount + int(byteCounter)
+	//fsmlogger.SetField("TrafficCount", newcount)
 
 	// Retrieve the current update count
-	updatecountInterface, _ := fsmlogger.GetField("UpdateCount")
-	updatecount := updatecountInterface.(int) // Assert as int
+	//updatecountInterface, _ := fsmlogger.GetField("UpdateCount")
+	//updatecount := updatecountInterface.(int) // Assert as int
 
 	// Increment the update count
-	newucount := updatecount + 1
-	fsmlogger.SetField("UpdateCount", newucount)
+	//newucount := updatecount + 1
+	//fsmlogger.SetField("UpdateCount", newucount)
 
 	// Print the size of the received data and updated counts
-	fmt.Printf("Received data size: %d bytes\n", byteCounter)
-	fmt.Printf("Updated TrafficCount: %d, UpdateCount: %d\n", newcount, newucount)
+	// fmt.Printf("Received data size: %d bytes\n", byteCounter)
+	// fmt.Printf("Updated TrafficCount: %d, UpdateCount: %d\n", newcount, newucount)
+
+	if update.File != nil && len(update.File) > 0 {
+		fsmlogger.lock.Lock()
+		fsmlogger.TrafficCount = fsmlogger.TrafficCount + int(byteCounter)
+		fsmlogger.UpdateCount = fsmlogger.UpdateCount + 1
+		fsmlogger.lock.Unlock()
+	}
 
 	// Process the logger update
 	process_logger_update_EEA(m, update.STH, update)

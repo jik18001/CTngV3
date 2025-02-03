@@ -3,13 +3,29 @@
     "monitor_id": "M4",
     "entity_id": "L1",
     "entity_type": "Logger",
-    "converge_time": 15.572035853,
-    "traffic": "20.35 MB",
+    "converge_time": 15.263987009,
+    "traffic": "12.72 MB",
+    "update_count": 1
+  },
+  {
+    "monitor_id": "M4",
+    "entity_id": "L2",
+    "entity_type": "Logger",
+    "converge_time": 12.270137241,
+    "traffic": "12.72 MB",
     "update_count": 1
   },
   {
     "monitor_id": "M4",
     "entity_id": "C1",
+    "entity_type": "CA",
+    "converge_time": 0,
+    "traffic": "0 bytes",
+    "update_count": 0
+  },
+  {
+    "monitor_id": "M4",
+    "entity_id": "C2",
     "entity_type": "CA",
     "converge_time": 0,
     "traffic": "0 bytes",

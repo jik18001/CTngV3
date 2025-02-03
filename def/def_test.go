@@ -373,9 +373,9 @@ func TestCryptoIO(t *testing.T) {
 
 func TestSimulationIO(t *testing.T) {
 	num_monitors := 4
-	Mal := 1
-	num_loggers := 1
-	num_cas := 1
+	Mal := 2
+	num_loggers := 2
+	num_cas := 2
 	// Generate a new configuration using CTngKeyGen function with specified parameters.
 	newconfig := CTngKeyGen(num_loggers, num_cas, num_monitors, Mal+1)
 
@@ -419,10 +419,10 @@ func TestSimulationIO(t *testing.T) {
 	response_wait_time := flag.Int("reponse_wait_time", 6, "Wait time in seconds")
 	verification_wait_time := flag.Int("verification_wait_time", 22, "Wait time in seconds")
 	mud := flag.Int("mud", 60, "Maximum Update Delay (some integer value) in seconds")
-	//bmode := flag.String("bmode", MIN_WT, "Mode: Min bandwidth or Min wait time")
-	bmode := flag.String("bmode", MIN_BC, "Mode: Min bandwidth or Min wait time")
-	//dmode := flag.String("dmode", DEFAULT, "Mode: default or EEA")
-	dmode := flag.String("dmode", EEA, "Mode: default or EEA")
+	bmode := flag.String("bmode", MIN_WT, "Mode: Min bandwidth or Min wait time")
+	//bmode := flag.String("bmode", MIN_BC, "Mode: Min bandwidth or Min wait time")
+	dmode := flag.String("dmode", DEFAULT, "Mode: default or EEA")
+	//dmode := flag.String("dmode", EEA, "Mode: default or EEA")
 	crvsize := flag.Int("CRV_size", 100000000, "CRV_size")
 	revocation_ratio := flag.Float64("Revocation_ratio", 0.002, "Revocation_ratio (float)")
 	certificate_size := flag.Int("Cerificate_size", 2000, "Size of dummy certificate, in Bytes")
