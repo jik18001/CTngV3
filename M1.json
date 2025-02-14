@@ -3,7 +3,7 @@
     "monitor_id": "M1",
     "entity_id": "L1",
     "entity_type": "Logger",
-    "converge_time": 15.260260878,
+    "converge_time": 13.237858035,
     "traffic": "12.72 MB",
     "update_count": 1
   },
@@ -11,7 +11,7 @@
     "monitor_id": "M1",
     "entity_id": "L2",
     "entity_type": "Logger",
-    "converge_time": 12.275745909,
+    "converge_time": 12.234531356,
     "traffic": "12.72 MB",
     "update_count": 1
   },

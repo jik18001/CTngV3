@@ -17,11 +17,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	time.AfterFunc(2*time.Minute, func() {
-		fmt.Println("Terminating the program after 1 minute.")
-		os.Exit(0)
-	})
-
 	var cryptofile = "def/testconfig.json"
 	var settingfile = "def/testsettings.json"
 	if os.Args[3] == "deter" {
@@ -39,6 +34,11 @@ func main() {
 	numFSMCAEEAs := restoredsetting.Num_CAs
 	numFSMLoggerEEAs := restoredsetting.Num_Loggers
 	numMonitors := restoredsetting.Num_Monitors
+	MUD := restoredsetting.MUD
+	time.AfterFunc(time.Duration(MUD)*time.Second, func() {
+		fmt.Println("Terminating the program after MUD.")
+		os.Exit(0)
+	})
 
 	fmt.Printf("Configuration Loaded: %d CA(s), %d Logger(s), %d Monitor(s)\n", numFSMCAEEAs, numFSMLoggerEEAs, numMonitors)
 

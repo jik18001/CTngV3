@@ -3,23 +3,23 @@ M2
 default
 Starting Default Server
 Converge times successfully dumped to M2.json
-Current Time: 2025-02-03T15:07:28-05:00
+Current Time: 2025-02-14T15:33:31-05:00
 [34m(default) Listening on port: 8005 [0m
 number of partial Signatures:  1
 10 true
 WAKE_TM event triggered.
-TBS:  {L2 1 5000 2025-02-03T20:07:29Z [3 24 31 31 168 203 49 251 253 21 232 142 152 201 218 165 199 140 198 64 111 190 112 201 195 94 84 213 165 172 212 112] {"sig":"","id":""}}
+TBS:  {L2 1 5000 2025-02-14T20:33:32Z [3 24 31 31 168 203 49 251 253 21 232 142 152 201 218 165 199 140 198 64 111 190 112 201 195 94 84 213 165 172 212 112] {"sig":"","id":""}}
 number of partial Signatures:  2
 number of partial Signatures:  3
-Time elapsed since start: 12.197682342s
+Time elapsed since start: 12.236550866s
 transparency_partial_signature broadcasted
 10 true
 WAKE_TM event triggered.
-TBS:  {L1 1 5000 2025-02-03T20:07:32Z [3 24 31 31 168 203 49 251 253 21 232 142 152 201 218 165 199 140 198 64 111 190 112 201 195 94 84 213 165 172 212 112] {"sig":"","id":""}}
+TBS:  {L1 1 5000 2025-02-14T20:33:33Z [3 24 31 31 168 203 49 251 253 21 232 142 152 201 218 165 199 140 198 64 111 190 112 201 195 94 84 213 165 172 212 112] {"sig":"","id":""}}
 number of partial Signatures:  1
 number of partial Signatures:  2
 number of partial Signatures:  3
-Time elapsed since start: 15.186165329s
+Time elapsed since start: 13.240274524s
 transparency_partial_signature broadcasted
+Terminating the program after MUD.
 Converge times successfully dumped to M2.json
-Terminating the program after 1 minute.
