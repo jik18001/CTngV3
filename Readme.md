@@ -33,4 +33,5 @@ https://launch.sphere-testbed.net/
 
 
 ## Disclaimer: 
-  Only the Logger related functionalities are actively maintained.
+### 1. Only the Logger related functionalities are actively maintained.
+### 2. This repository does not simulate Logger/CA misbehaviors. 
