@@ -23,7 +23,9 @@ in the project root directory
 
 ## Running Tests with Deterlab TestBed (Sphere Research infrasture)
 
-Please refer to the other repository 
+Please refer to 
+
+https://github.com/jik18001/CTng-on-Sphere/tree/main
 
 Link to the testbed: 
 
