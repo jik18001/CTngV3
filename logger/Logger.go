@@ -130,10 +130,9 @@ func (l *Logger) GenerateSTH(rootHash []byte, size int) *def.STH {
 }
 
 func (l *Logger) GenerateUpdate() {
-	// Instead of: enc, err := rs.New(l.NumMonitors - l.Mal, l.Mal)
-	// We'll define k=Mal+1, and m=NumMonitors-k
-	k := l.Mal + 1         // Number of data shards
-	m := l.NumMonitors - k // Number of parity shards
+	// Initialize Reed-Solomon encoder
+	k := l.NumMonitors / 2           // Number of data shards (floor division)
+	m := l.NumMonitors - k           // Number of parity shards
 	enc, err := rs.New(k, m)
 	if err != nil {
 		log.Fatalf("Error initializing Reed-Solomon encoder: %v", err)

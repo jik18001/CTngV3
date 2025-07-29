@@ -216,7 +216,7 @@ func process_logger_update_EEA(m *MonitorEEA, sth def.STH, update def.Update_Log
 	}
 	fsmlogger.AddDataFragment(monitorindex, update.FileShare)
 	counter := fsmlogger.GetDataFragmentCounter()
-	required := m.Settings.Mal + 1 // only Mal+1 shards needed
+	required := m.Settings.Num_Monitors / 2 // Number of data shards (floor division)
 	if counter == required {
 		dec, err := rs.New(required, m.Settings.Num_Monitors-required)
 		if err != nil {

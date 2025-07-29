@@ -26,7 +26,7 @@
   "Response_Wait_time ": 6,
   "Verification_Wait_time": 10,
   "MUD": 30,
-  "Distribution_Mode": "default",
+  "Distribution_Mode": "erasure encoding algorithm",
   "Broadcasting_Mode": "minimal wait time",
   "Num_CAs": 2,
   "CRV_size": 100000000,
