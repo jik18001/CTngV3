@@ -1,0 +1,19 @@
+---
+- name: Distribute Entire CTngexp Folder to All Relevant Hosts
+  hosts: Control
+  tasks:
+    - name: Create CTngexp folder in /tmp
+      ansible.builtin.file:
+        path: /tmp/CTngexp
+        state: directory
+
+    - name: Synchronize files to /tmp/CTngexp
+      ansible.builtin.synchronize:
+        src: "../CTngexp/"        # Relative path on your control machine
+        dest: "/tmp/CTngexp/"     # Remote path
+        archive: yes
+        recursive: yes
+        rsync_opts:
+          - "--exclude=.git"      # Example: exclude .git or any large folders
+          - "--exclude=node_modules"
+      delegate_to: localhost

@@ -1,0 +1,12 @@
+---
+- hosts: all
+  become: yes  # to run tasks as sudo
+  tasks:
+    - name: Update repositories
+      apt:
+        update_cache: yes
+
+    - name: Install g++
+      apt:
+        name: g++
+        state: present

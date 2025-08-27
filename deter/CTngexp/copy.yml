@@ -1,0 +1,32 @@
+---
+- name: Copy /tmp/output from control to localhost
+  hosts: control
+  gather_facts: no
+  tasks:
+    - name: Archive the /tmp/output directory on the control host
+      archive:
+        path: /tmp/output
+        dest: /tmp/output.tar.gz
+        format: gz
+
+    - name: Fetch the archive from the control host to localhost
+      fetch:
+        src: /tmp/output.tar.gz
+        dest: /tmp/output.tar.gz
+        flat: yes
+
+- name: Extract the archive on localhost
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Ensure destination directory exists
+      file:
+        path: ../output_copy/
+        state: directory
+        mode: '0755'
+
+    - name: Extract the archive to the destination directory
+      unarchive:
+        src: /tmp/output.tar.gz
+        dest: ../output_copy/
+        remote_src: no

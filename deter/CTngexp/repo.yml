@@ -1,0 +1,33 @@
+---
+- name: Clone or update CTngV3 repo and run go mod tidy
+  hosts: CA, Logger, Monitor, Control  # This will target all the CA, Logger, and Monitor hosts
+  tasks:
+    - name: Check if CTngV3 repo exists
+      stat:
+        path: /tmp/CTngV3
+      register: repo_exists
+
+    - name: Clone CTngV3 repo if it does not exist
+      git:
+        repo: https://github.com/jik18001/CTngV3.git
+        dest: /tmp/CTngV3
+        update: no
+      when: not repo_exists.stat.exists
+
+    - name: Update CTngV3 repo with force overwrite if it exists
+      git:
+        repo: https://github.com/jik18001/CTngV3.git
+        dest: /tmp/CTngV3
+        update: yes
+        force: yes  # Force overwrite local modifications
+      when: repo_exists.stat.exists
+
+    - name: Run go mod tidy in CTngV3 directory
+      command: go mod tidy
+      args:
+        chdir: /tmp/CTngV3
+      register: tidy_result
+
+    - name: Output go mod tidy result
+      debug:
+        msg: "Go mod tidy completed with: {{ tidy_result.stdout | default('No output') }}"

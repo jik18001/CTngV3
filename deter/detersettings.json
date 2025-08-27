@@ -100,12 +100,12 @@
     "M9": "8024"
   },
   "Num_Monitors": 32,
-  "Mal": 8,
+  "Mal": 3,
   "Update_Wait_time": 5,
   "Mature_Wait_time": 0,
   "Response_Wait_time ": 6,
   "Verification_Wait_time": 10,
-  "MUD": 60,
+  "MUD": 600,
   "Distribution_Mode": "erasure encoding algorithm",
   "Broadcasting_Mode": "minimal bandwidth consumption",
   "Num_CAs": 8,
@@ -113,5 +113,5 @@
   "Revocation_ratio": 0.002,
   "Num_Loggers": 8,
   "Certificate_size": 2000,
-  "Certificate_per_logger": 5000
+  "Certificate_per_logger": 8333
 }

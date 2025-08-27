@@ -1,0 +1,266 @@
+from mergexp import *
+
+#
+# 1) Define the Network
+#
+net = Network(
+    "4_routers_with_single_backbone_router",
+    routing == static,              
+    experimentnetresolution == True
+)
+
+#
+# 2) Define Nodes
+#
+
+# Control node
+control = net.node("Control", image == "2204", proc.cores >= 4, memory.capacity >= gb(8))
+
+# 8 CA nodes
+groupA = [
+    net.node(f"CA{i}", image == "2204", proc.cores >= 8, memory.capacity >= gb(16))
+    for i in range(1, 9)
+]
+
+# 8 Logger nodes
+groupB = [
+    net.node(f"Logger{i}", image == "2204", proc.cores >= 8, memory.capacity >= gb(16))
+    for i in range(1, 9)
+]
+
+# 32 Monitors
+groupC = [
+    net.node(f"Monitor{i}", image == "2204", proc.cores >= 8, memory.capacity >= gb(16))
+    for i in range(1, 33)
+]
+
+# 4 main routers
+groupD = [
+    net.node(f"Router{i}", image == "2204", proc.cores >= 8, memory.capacity >= gb(16))
+    for i in range(1, 5)
+]
+router1, router2, router3, router4 = groupD
+
+# A single backbone router
+routerBB = net.node("BackboneRouter", image == "2204", proc.cores >= 8, memory.capacity >= gb(16))
+
+#
+# 3) Split the host groups so each router gets some
+#
+
+# 8 CA -> 4 subgroups of 2
+ca_subgroups = [groupA[i:i+2] for i in range(0, 8, 2)]
+# e.g. [CA1,CA2], [CA3,CA4], ...
+
+# 8 Logger -> 4 subgroups of 2
+logger_subgroups = [groupB[i:i+2] for i in range(0, 8, 2)]
+
+# 32 Monitors -> 4 subgroups of 8
+monitor_subgroups = [groupC[i:i+8] for i in range(0, 32, 8)]
+
+#
+# 4) Create host-to-router links at 1000 Mbps (point-to-point /30)
+#
+
+# 4a) CA links
+ca_bases = ["10.0.10", "10.0.20", "10.0.30", "10.0.40"]
+
+for i, ca_group in enumerate(ca_subgroups):
+    router = groupD[i]  # one of Router1..4
+    base_ip = ca_bases[i]
+
+    for j, ca_node in enumerate(ca_group):
+        link_ca = net.connect([router, ca_node], capacity == mbps(1000))
+
+        offset = j * 4
+        router_ip = f"{base_ip}.{offset+1}/30"
+        ca_ip     = f"{base_ip}.{offset+2}/30"
+
+        link_ca[router].socket.addrs  = ip4(router_ip)
+        link_ca[ca_node].socket.addrs = ip4(ca_ip)
+
+# 4b) Logger links
+logger_bases = ["10.0.50", "10.0.60", "10.0.70", "10.0.80"]
+
+for i, logger_group in enumerate(logger_subgroups):
+    router = groupD[i]
+    base_ip = logger_bases[i]
+
+    for j, log_node in enumerate(logger_group):
+        link_logger = net.connect([router, log_node], capacity == mbps(1000))
+
+        offset = j * 4
+        router_ip = f"{base_ip}.{offset+1}/30"
+        log_ip    = f"{base_ip}.{offset+2}/30"
+
+        link_logger[router].socket.addrs = ip4(router_ip)
+        link_logger[log_node].socket.addrs = ip4(log_ip)
+
+# 4c) Monitor links
+monitor_bases = ["10.0.200", "10.0.210", "10.0.220", "10.0.230"]
+
+for i, mon_group in enumerate(monitor_subgroups):
+    router = groupD[i]
+    base_ip = monitor_bases[i]
+
+    for j, mon_node in enumerate(mon_group):
+        link_mon = net.connect([router, mon_node], capacity == mbps(1000))
+
+        offset = j * 4
+        router_ip  = f"{base_ip}.{offset+1}/30"
+        mon_ip     = f"{base_ip}.{offset+2}/30"
+
+        link_mon[router].socket.addrs   = ip4(router_ip)
+        link_mon[mon_node].socket.addrs = ip4(mon_ip)
+
+#
+# 5) Replace the old "backbone" with a single BackboneRouter
+#    We'll create a point-to-point /30 for each main router <-> routerBB
+#    No capacity specified, or you can define it if you wish.
+#
+# Example IP ranges for these 4 links:
+#   - Router1 <-> 10.0.100.x
+#   - Router2 <-> 10.0.110.x
+#   - Router3 <-> 10.0.120.x
+#   - Router4 <-> 10.0.130.x
+#
+backbone_bases = ["10.0.100", "10.0.110", "10.0.120", "10.0.130"]
+
+for i, main_rtr in enumerate(groupD):
+    base_ip = backbone_bases[i]
+    link_bb = net.connect([main_rtr, routerBB])  # no capacity => default/unlimited
+
+    # We'll just offset by 0 for each, since there's only 1 link per range
+    router_ip   = f"{base_ip}.1/30"
+    backbone_ip = f"{base_ip}.2/30"
+
+    link_bb[main_rtr].socket.addrs = ip4(router_ip)
+    link_bb[routerBB].socket.addrs = ip4(backbone_ip)
+
+#
+# 6) Attach the Control node to the BackboneRouter as well
+#    Another /30, e.g. 10.0.140.x
+#
+control_link = net.connect([control, routerBB])
+control_link[control].socket.addrs   = ip4("10.0.140.2/30")
+control_link[routerBB].socket.addrs  = ip4("10.0.140.1/30")
+
+#
+# 7) Static Routing
+#
+# Because `routing == static`, each router only knows:
+#   - Its local p2p links to CAs, Loggers, Monitors
+#   - Its p2p link to the BackboneRouter
+#
+# The BackboneRouter knows each p2p link for the 4 main routers plus the Control node.
+# For cross-subnet traffic, you must either:
+#   - Set static routes in all routers (including BackboneRouter), or
+#   - Run a routing daemon on them.
+#
+
+experiment(net)
+
+from mergexp import *
+
+#
+# 1) Define the Network
+#
+net = Network(
+    "single_router_8CA_8Logger_32Mon_Control",
+    routing == static,  # Still "static," but there's only one router now
+    experimentnetresolution == True
+)
+
+#
+# 2) Define Nodes
+#
+
+# Control node
+control = net.node("Control", image == "2204", proc.cores >= 4, memory.capacity >= gb(8))
+
+# 8 CA nodes
+groupA = [
+    net.node(f"CA{i}", image == "2204", proc.cores >= 8, memory.capacity >= gb(16))
+    for i in range(1, 9)
+]
+
+# 8 Logger nodes
+groupB = [
+    net.node(f"Logger{i}", image == "2204", proc.cores >= 8, memory.capacity >= gb(16))
+    for i in range(1, 9)
+]
+
+# 32 Monitors
+groupC = [
+    net.node(f"Monitor{i}", image == "2204", proc.cores >= 8, memory.capacity >= gb(16))
+    for i in range(1, 33)
+]
+
+# Single router
+the_router = net.node("Router", image == "2204", proc.cores >= 8, memory.capacity >= gb(16))
+
+#
+# 3) Create Links
+#
+# We'll give each node a point-to-point link with the router, each on a unique /30.
+# This ensures there's no "shared LAN" among the nodes themselves.
+
+#
+# 3a) CA nodes -> single router
+#     We'll use an IP base like "10.0.10.x" for each p2p, stepping by 4 for each node.
+#
+ca_base = "10.0.10"
+for i, ca_node in enumerate(groupA):
+    link_ca = net.connect([the_router, ca_node], capacity == mbps(1000))
+
+    offset = i * 4  # 0, 4, 8, 12, ...
+    router_ip = f"{ca_base}.{offset+1}/30"
+    ca_ip     = f"{ca_base}.{offset+2}/30"
+
+    link_ca[the_router].socket.addrs = ip4(router_ip)
+    link_ca[ca_node].socket.addrs    = ip4(ca_ip)
+
+#
+# 3b) Logger nodes -> single router
+#     Use base like "10.0.20.x" for each p2p.
+#
+logger_base = "10.0.20"
+for i, log_node in enumerate(groupB):
+    link_logger = net.connect([the_router, log_node], capacity == mbps(1000))
+
+    offset = i * 4
+    router_ip = f"{logger_base}.{offset+1}/30"
+    log_ip    = f"{logger_base}.{offset+2}/30"
+
+    link_logger[the_router].socket.addrs = ip4(router_ip)
+    link_logger[log_node].socket.addrs   = ip4(log_ip)
+
+#
+# 3c) Monitor nodes -> single router
+#     We'll use base "10.0.30.x" for each p2p link.
+#
+monitor_base = "10.0.30"
+for i, mon_node in enumerate(groupC):
+    link_mon = net.connect([the_router, mon_node], capacity == mbps(1000))
+
+    offset = i * 4
+    router_ip = f"{monitor_base}.{offset+1}/30"
+    mon_ip    = f"{monitor_base}.{offset+2}/30"
+
+    link_mon[the_router].socket.addrs  = ip4(router_ip)
+    link_mon[mon_node].socket.addrs    = ip4(mon_ip)
+
+#
+# 3d) Control node -> single router
+#     We'll use base "10.0.40.x" for this p2p link.
+#
+control_link = net.connect([the_router, control], capacity == mbps(1000))
+
+# Since there's just one Control node, offset = 0 is fine
+control_router_ip = "10.0.40.1/30"
+control_ip        = "10.0.40.2/30"
+
+control_link[the_router].socket.addrs = ip4(control_router_ip)
+control_link[control].socket.addrs    = ip4(control_ip)
+
+experiment(net)

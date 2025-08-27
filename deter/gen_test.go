@@ -10,7 +10,7 @@ import (
 
 func TestSimulationIO(t *testing.T) {
 	num_monitors := 32
-	Mal := 8
+	Mal := 3
 	num_loggers := 8
 	num_cas := 8
 	// Generate a new configuration using CTngKeyGen function with specified parameters.
@@ -46,15 +46,15 @@ func TestSimulationIO(t *testing.T) {
 	mature_wait_time := flag.Int("mature_wait_time", 0, "Wait time in seconds")
 	response_wait_time := flag.Int("reponse_wait_time", 6, "Wait time in seconds")
 	verification_wait_time := flag.Int("verification_wait_time", 10, "Wait time in seconds")
-	mud := flag.Int("mud", 60, "Maximum Update Delay (some integer value) in seconds")
+	mud := flag.Int("mud", 600, "Maximum Update Delay (some integer value) in seconds")
 	//bmode := flag.String("bmode", def.MIN_WT, "Mode: Min bandwidth or Min wait time")
 	bmode := flag.String("bmode", def.MIN_BC, "Mode: Min bandwidth or Min wait time")
-	dmode := flag.String("dmode", def.DEFAULT, "Mode: default or EEA")
-	//dmode := flag.String("dmode", def.EEA, "Mode: default or EEA")
+	//dmode := flag.String("dmode", def.DEFAULT, "Mode: default or EEA")
+	dmode := flag.String("dmode", def.EEA, "Mode: default or EEA")
 	crvsize := flag.Int("CRV_size", 100000000, "CRV_size")
 	revocation_ratio := flag.Float64("Revocation_ratio", 0.002, "Revocation_ratio (float)")
 	certificate_size := flag.Int("Cerificate_size", 2000, "Size of dummy certificate, in Bytes")
-	certificate_per_logger := flag.Int("Certificate_per_logger", 5000, "New certificates per period")
+	certificate_per_logger := flag.Int("Certificate_per_logger", 8333, "New certificates per period")
 
 	// Parse the command-line flags.
 	flag.Parse()

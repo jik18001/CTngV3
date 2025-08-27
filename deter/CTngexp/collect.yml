@@ -1,0 +1,32 @@
+---
+- name: Gather and aggregate monitor JSON files
+  hosts: Monitor
+  gather_facts: no
+  tasks:
+    - name: Derive monitor number from hostname
+      set_fact:
+        monitor_number: "{{ (inventory_hostname | regex_replace('[^0-9]', '')) | int if (inventory_hostname | regex_replace('[^0-9]', '')) != '' else 0 }}"
+
+    - name: Fetch M{Monitor Number}.json file from monitor host
+      fetch:
+        src: /tmp/CTngV3/M{{ monitor_number }}.json
+        dest: /tmp/monitor_files/
+        flat: yes  # Save fetched files without creating host-specific directories
+
+- name: Aggregate JSON data
+  hosts: localhost
+  vars:
+    output_timestamp: "{{ lookup('pipe', 'date +%Y%m%d_%H%M%S') }}"  # Generate timestamp
+  tasks:
+    - name: Ensure the output directory exists
+      file:
+        path: /tmp/output/
+        state: directory
+        mode: '0755'
+
+    - name: Merge JSON files into a single file
+      shell: cat /tmp/monitor_files/M*.json > /tmp/output/output_{{ output_timestamp }}.json
+
+    - name: Debug output file path
+      debug:
+        msg: "Aggregated JSON file created at /tmp/output/output_{{ output_timestamp }}.json"

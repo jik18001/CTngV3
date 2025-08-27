@@ -1,0 +1,21 @@
+---
+- hosts: control
+  tasks:
+    - name: Copy known_hosts to control node
+      copy:
+        src: "~/.ssh/known_hosts"
+        dest: "~/.ssh/known_hosts"
+        mode: '0600'
+        directory_mode: '0600'
+    - name: Copy config to control node
+      copy:
+        src: "~/.ssh/config"
+        dest: "~/.ssh/config"
+        mode: '0600'
+        directory_mode: '0600'
+    - name: Copy config to control node
+      copy:
+        src: "~/.ssh/merge_key"
+        dest: "~/.ssh/merge_key"
+        mode: '0600'
+        directory_mode: '0600'

@@ -1,0 +1,17 @@
+---
+- name: Install Go on all hosts
+  hosts: CA, Logger, Monitor, Control
+  become: yes  # Use sudo to install packages
+  tasks:
+    - name: Install Go via Snap
+      command: sudo snap install go --classic
+      register: install_result
+
+    - name: Verify Go installation
+      command: go version
+      register: go_version
+      failed_when: go_version.rc != 0
+
+    - name: Output Go version
+      debug:
+        msg: "Installed Go version: {{ go_version.stdout }}"
