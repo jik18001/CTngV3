@@ -2,6 +2,22 @@
 # CTng: Certificate and Revocation Transparency
 
 This is a Proof of Concept/Prototype code for Periodic Consistent Broadcast Protocol in CTng. Each entity can be found in their corresponding folder.
+## Code Structure
+
+- **Monitor, Logger, and CA**:  
+  Each has its own folder containing the corresponding implementation.  
+
+- **`CTngV3/def`**:  
+  Contains most variable definitions, wrapper functions, and configuration files for local testing.  
+
+- **`CTngV3/deter`**:  
+  Includes the model used on Sphere, configuration files for Sphere testing, a simple Python script for computing convergence time, and the `CTngexp` folder.  
+
+- **`CTngV3/deter/CTngexp`**:  
+  Contains all automation scripts used to:  
+  - Set up the software toolchain on all VMs on Sphere.  
+  - Automate experiment execution.  
+  - Collect and timestamp experiment results.  
 
 ## Software Requirements (for local testing)
 
@@ -22,8 +38,8 @@ sh run.sh
 in the project root directory 
 
 ## Disclaimer: 
-### 1. Only the Logger related functionalities are actively maintained.
-### 2. This repository does not simulate Logger/CA misbehaviors. 
+- 1. Only the Logger related functionalities are actively maintained.
+- 2. This repository does not simulate Logger/CA misbehaviors. 
 
 
 ## Running Tests with Deterlab TestBed (Sphere Research infrasture)
@@ -129,39 +145,49 @@ g++ --version
 go version
 ```
 
-## 6. Repository Setup & Distribution
+## 6. Running Experiments
 
-1. **Initial checkout/setup**
+#### 6.1 **Initial checkout/setup**
+```bash
+ansible-playbook -i inv.ini repo.yml
+```
+#### 6.2 Modify variables 
+Modify the variables in 
+```
+CTngV3/deter/gen_test.go
+```
+and run (while in CTngV3/deter)
+```
+go test
+```
+to apply the changes to the control node. The new setting files now need to be distributed to all the other hosts.
 
-   ```bash
-   ansible-playbook -i inv.ini repo.yml
-   ```
-2. **Propagate code changes** (e.g., edits in gen\_test.go)
-
-   ```bash
-   ansible-playbook -i inv.ini redis.yml
-   ```
-
-## 7. Run the Experiment
-
-From the control node in your CTngexp directory:
+#### 6.3 Redistribute
+To distribute the new configuration files to other hosts, navigate to 
+```
+CTngV3/deter/CTngexp
+```
+and run
+```bash
+ansible-playbook -i inv.ini redis.yml
+```
+To make sure changes are applied properly to all the monitors,open up a new terminal and execute
+```bash
+su jik18001
+```
+to switch to user mode and ssh to any monitor by running
 
 ```bash
-ansible-playbook -i inv.ini ctngv3.yml
+ssh monitor8
+```
+Then navigate to the CTngV3/deter to check if the changes have been applied by running
+
+```bash
+cat detersettings.json
 ```
 
-## 8. Iterating on Experiments
-
-#### 1. Edit your test code (e.g., CTngV3/deter/gen\_test.go).
-#### 2. Redistribute
-
-   ```bash
-   ansible-playbook -i inv.ini redis.yml
-   ```
-#### 3. rerun and collect result
-   ```bash
-   go test ./CTngV3/deter
-   ```
+#### 6.4 Run and collect result
+Nevigate to CTngV3/deter/CTngexp and execute
    ```bash
    ansible-playbook -i inv.ini ctngv3.yml
    ```
@@ -169,24 +195,26 @@ ansible-playbook -i inv.ini ctngv3.yml
    ansible-playbook -i inv.ini collect.yml
    ```
    or Run experiment for 30 iterations and automatically collect results for every run :
+   
    ```bash
    sh run.sh
    ```
+#### 6.5 compute the result
+Navigate to the folder where the output folder is placed in (/tmp), make sure the compute.py is in the same folder (copy from CTngV3/deter/compute.py if not) and run
+```
+python3 compute.py output [Replace _with_number_of_monitors]
+```
 
-
-## 9. Retrieve Results & Cleanup
-
-1. **Copy back to XDC:**
-
+#### Clean up temporary files on control node:
+```bash
+rm -rv output output.tar.gz monitor_files 
+```
+## 6 Copy to local machine 
+   **Copy from control to XDC:**
    ```bash
    ansible-playbook -i inv.ini copy.yml
    ```
-2. **Clean up temporary files on control node:**
-
-   ```bash
-   rm -rv output output.tar.gz monitor_files
-   ```
-## 10. Copy to local machine 
+   **Copy from XDC to local:**
    ```bash
    mrg xdc scp download -r <path_to_folder_on_XDC> <path_local_destination_folder>
    ```
