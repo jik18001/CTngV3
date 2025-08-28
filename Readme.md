@@ -52,7 +52,7 @@ https://launch.sphere-testbed.net/
 # Model 
 The model file creates a star topology as shown in the figure below: 
 
-![image](https://github.com/user-attachments/assets/ebc51907-91f9-44cf-89da-249f72210f03)
+![System Topology](./topo.png)
 
 Every entity (including a control node) is connected to the backbone router via a 100Mbps access link. 
 
@@ -233,7 +233,7 @@ Link:
 https://github.com/jik18001/CTngV3/commit/fe0941cc115a9085c43b0c48cf64c95086f338dd
 ```
 
-![image](https://github.com/user-attachments/assets/79f05636-7404-4c56-97e3-672516a68a67)
+![Before K Change](./BeforeKchange.png)
 
 ### K = floor (n/2)
 Results were obtained using CTngV3 repository with Commit ID (Only 4 LoC change): 
@@ -244,6 +244,6 @@ Link:
 ```
 https://github.com/jik18001/CTngV3/commit/62705624cb16bdd9e9a7eb46281bc43590a4b61e
 ```
-<img width="978" height="641" alt="image" src="https://github.com/user-attachments/assets/ff1755a3-6d00-461e-9d64-72f8d0eaf3de" />
+![After K Change](./AfterKchange.png)
 
 
