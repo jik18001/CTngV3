@@ -42,7 +42,7 @@ in the project root directory
 - 2. This repository does not simulate Logger/CA misbehaviors. 
 
 
-## Running Tests with Deterlab TestBed (Sphere Research infrasture)
+## Running Tests with Deterlab TestBed (Sphere Research infrastructure)
 
 Link to the testbed: 
 
