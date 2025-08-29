@@ -221,7 +221,7 @@ rm -rv output output.tar.gz monitor_files
    ```
 
 # Results
-We present the results with EEA version with different choice of K (number of data shards), K = f+1 is the results we included in our initial submission to NDSS' 2026 and we later changed to K = floor (n/2) due to its better overall performance. 
+We present the results with EEA version with different choice of K (number of data shards), K = f+1 is the results we included in our initial submission to NDSS' 2026 and we later changed to K = floor (n/2) due to its better overall performance. Note that the default version was not modified; thus, the green line in both graphs represents the same data. Any apparent difference is only due to the scaling of the *y*-axis.
 
 ###  K = f + 1
 Results were obtained by Damon James from the University of Connecticut using CTngV3 repository with Commit ID:
