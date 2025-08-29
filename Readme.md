@@ -221,7 +221,9 @@ rm -rv output output.tar.gz monitor_files
    ```
 
 # Results
-### K = f + 1
+We present the results with EEA version with different choice of K (number of data shards), K = f+1 is the results we included in our initial submission to NDSS' 2026 and we later changed to K = floor (n/2) due to its better overall performance. 
+
+###  K = f + 1
 Results were obtained by Damon James from the University of Connecticut using CTngV3 repository with Commit ID:
 ```
 fe0941c
