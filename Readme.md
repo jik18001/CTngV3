@@ -54,9 +54,7 @@ The model file creates a star topology as shown in the figure below:
 
 ![System Topology](./topo.png)
 
-Every entity (including a control node) is connected to the backbone router via a 100Mbps access link. 
-
-
+Every entity (including a control node) is connected to the backbone router via a 1000Mbps access link. 
 
 # Operations from the XDC
 ## 1. Generate Inventory
